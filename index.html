@@ -826,7 +826,9 @@ function setStage(which) {
   const fb = $("feedback");
   fixation.classList.toggle("on", which === "fixation");
   const isStim = which === "stimulus";
-  svg.hidden = !isStim;
+  // 注意：SVGSVGElement 没有 hidden IDL 属性，必须操作 content attribute
+  if (isStim) svg.removeAttribute("hidden");
+  else svg.setAttribute("hidden", "");
   $("stim").classList.toggle("on", isStim);
   if (!isStim) fb.classList.remove("on");
 }
@@ -907,8 +909,6 @@ function respond(key, isTimeout) {
   });
 
   setStage("blank");
-  $("stim").classList.remove("on");
-  $("stimSvg").hidden = true;
 
   if (S.phase === "practice" && S.cfg.practiceFeedback) {
     const fb = $("feedback");
