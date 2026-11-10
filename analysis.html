@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>数据分析 · 心理旋转实验</title>
+<meta name="description" content="心理旋转实验数据分析：多被试 CSV 上传，自动清洗与重复测量方差分析、旋转速度、镜像成本、对称性检验、线性/二次模型比较、ex-Gaussian 拟合。" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f5bea'/%3E%3Ctext x='32' y='45' font-family='Helvetica,Arial' font-size='38' font-weight='bold' fill='%23fff' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
+<style>
+  :root{
+    --bg:#f5f6f8;
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, #e8eefc 0%, rgba(232,238,252,0) 65%);
+    --panel:#fff; --panel-2:#fbfcfd;
+    --ink:#0e1418; --ink-2:#3b4754; --muted:#697586;
+    --line:#e3e7ee; --line-strong:#cfd6e0;
+    --accent:#2f5bea; --accent-2:#1e46c9; --accent-soft:#eaf0ff;
+    --ok:#0f8a56; --ok-soft:#e6f6ee; --bad:#cf3a3a; --bad-soft:#fdecec;
+    --warn:#a96500; --warn-soft:#fff4e2;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 12px 32px -12px rgba(16,24,40,.18);
+    --radius:18px;
+    --font:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC",
+           "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --series-1:#2f5bea; --series-2:#c2410c;
+  }
+  html[data-theme="dark"]{
+    --bg:#0d1014; --bg-grad:radial-gradient(1200px 600px at 50% -10%, #1a2437 0%, rgba(26,36,55,0) 65%);
+    --panel:#141a21; --panel-2:#11161c;
+    --ink:#eef2f6; --ink-2:#c3ccd6; --muted:#8b96a5;
+    --line:#232b34; --line-strong:#323d49;
+    --accent:#6f92ff; --accent-2:#8aa6ff; --accent-soft:#1b2536;
+    --ok:#3ddc97; --ok-soft:#12261d; --bad:#ff7b7b; --bad-soft:#2a1718;
+    --warn:#ffc46b; --warn-soft:#2a2013;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -18px rgba(0,0,0,.8);
+    --series-1:#6f92ff; --series-2:#ff9d6e;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  [hidden]{display:none !important;}
+  body{
+    margin:0; font-family:var(--font); color:var(--ink); line-height:1.65;
+    background:var(--bg); background-image:var(--bg-grad); background-repeat:no-repeat;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,p{margin:0;}
+  .topbar{
+    position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px;
+    padding:12px clamp(16px,4vw,32px);
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:saturate(1.6) blur(14px); border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex; align-items:center; gap:10px; min-width:0;}
+  .logo{
+    width:34px;height:34px;flex:none;border-radius:10px; display:grid; place-items:center;
+    background:linear-gradient(145deg,var(--accent),var(--accent-2)); color:#fff;
+    font-weight:800; font-size:16px; letter-spacing:-.5px; box-shadow:0 6px 16px -8px var(--accent);
+  }
+  .brand-t{display:flex; flex-direction:column;}
+  .brand-t b{font-size:14.5px; font-weight:650; white-space:nowrap;}
+  .brand-t span{font-size:11.5px; color:var(--muted); white-space:nowrap;}
+  .spacer{flex:1;}
+  .link{
+    font-size:13px; color:var(--ink-2); text-decoration:none; padding:7px 12px;
+    border:1px solid var(--line); border-radius:10px; background:var(--panel); white-space:nowrap;
+  }
+  .link:hover{border-color:var(--accent); color:var(--accent);}
+  main{max-width:1080px; margin:0 auto; padding:clamp(20px,4vw,36px) clamp(16px,4vw,24px) 72px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:clamp(20px,3.4vw,30px); margin-bottom:20px;
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:650;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--accent);
+    background:var(--accent-soft); padding:4px 10px; border-radius:999px; margin-bottom:14px;
+  }
+  h1.title{font-size:clamp(24px,3.6vw,32px); font-weight:760; letter-spacing:-.02em; line-height:1.2; margin-bottom:10px;}
+  .lede{color:var(--muted); font-size:14.5px; max-width:68ch;}
+  .lede b{color:var(--ink-2); font-weight:600;}
+
+  .drop{
+    display:grid; place-items:center; gap:8px; text-align:center;
+    border:1.5px dashed var(--line-strong); border-radius:14px;
+    background:var(--panel-2); padding:34px 20px; cursor:pointer;
+    transition:.18s ease; margin:22px 0 16px;
+  }
+  .drop:hover, .drop.over{border-color:var(--accent); background:var(--accent-soft);}
+  .drop b{font-size:14.5px;}
+  .drop span{font-size:12.5px; color:var(--muted);}
+  .drop input{display:none;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    font-family:inherit; font-size:14px; font-weight:640; padding:11px 18px;
+    border-radius:11px; cursor:pointer; border:1px solid transparent;
+    transition:.16s cubic-bezier(.2,.7,.3,1); white-space:nowrap;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{background:linear-gradient(180deg,var(--accent),var(--accent-2)); color:#fff; box-shadow:0 10px 22px -12px var(--accent);}
+  .btn-primary:hover{filter:brightness(1.06);}
+  .btn-ghost{background:var(--panel); border-color:var(--line-strong); color:var(--ink-2);}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent);}
+  .btn-quiet{background:transparent; color:var(--muted); padding:9px 12px;}
+  .btn-quiet:hover{color:var(--ink); background:var(--panel-2);}
+  .actions{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .hint{font-size:12px; color:var(--muted); margin-top:8px;}
+  code{font-size:12px; background:var(--panel-2); padding:1px 5px; border-radius:5px;}
+
+  .optrow{display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end;}
+  .optrow label{display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted);}
+  .optrow input[type="number"]{
+    width:112px; padding:8px 10px; border-radius:9px; font-family:inherit; font-size:13.5px;
+    border:1px solid var(--line-strong); background:var(--panel-2); color:var(--ink); outline:none;
+  }
+  .optrow input[type="number"]:focus{border-color:var(--accent);}
+  .optrow .check{flex-direction:row; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2); padding-bottom:9px;}
+  .optrow input[type="checkbox"]{width:15px; height:15px; accent-color:var(--accent);}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); background:var(--panel-2); font-size:12.5px; color:var(--ink-2);
+  }
+  .chip b{color:var(--ink); font-weight:650;}
+  .chip.warn{background:var(--warn-soft); border-color:color-mix(in srgb,var(--warn) 30%,transparent); color:var(--warn);}
+  .chip.bad{background:var(--bad-soft); border-color:color-mix(in srgb,var(--bad) 26%,transparent); color:var(--bad);}
+
+  .stats{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:6px 0 4px;}
+  @media (max-width:820px){ .stats{grid-template-columns:repeat(2,1fr);} }
+  .stat{background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:13px 14px;}
+  .stat span{display:block; font-size:11.5px; color:var(--muted); margin-bottom:4px;}
+  .stat b{font-size:21px; font-weight:720; letter-spacing:-.02em; font-variant-numeric:tabular-nums;}
+  .stat b em{font-style:normal; font-size:11.5px; font-weight:600; color:var(--muted); margin-left:2px;}
+
+  .sect{margin-top:30px; padding-top:22px; border-top:1px solid var(--line);}
+  .sect:first-of-type{border-top:0; padding-top:0;}
+  .sect-h{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; margin-bottom:12px;}
+  .sect-h h2{font-size:16px; font-weight:700; letter-spacing:-.01em;}
+  .sect-h p{font-size:12.5px; color:var(--muted);}
+
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel-2); min-width:0; max-width:100%;}
+  table{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums;}
+  th,td{padding:9px 11px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left;}
+  thead th{font-size:11.5px; font-weight:640; color:var(--muted); border-bottom:1px solid var(--line-strong);}
+  tbody tr:hover{background:color-mix(in srgb, var(--accent) 4%, transparent);}
+  tbody tr:last-child td{border-bottom:0;}
+  tr.sig td{font-weight:620;}
+  .tbl-wrap table{min-width:520px;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .grid2 > *{min-width:0;}
+  @media (max-width:860px){ .grid2{grid-template-columns:1fr;} }
+  .chart{width:100%; height:auto; display:block;}
+  .notes{font-size:12.5px; color:var(--muted); margin-top:10px; line-height:1.8;}
+  .notes b{color:var(--ink-2);}
+
+  .banner{
+    display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:12px;
+    font-size:13px; background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 20%,transparent);
+    color:var(--ink-2); margin-top:14px;
+  }
+  .banner.warn{background:var(--warn-soft); border-color:color-mix(in srgb,var(--warn) 26%,transparent);}
+  .banner b{color:var(--ink);}
+
+  .foot{text-align:center; font-size:12px; color:var(--ink-2); opacity:.78; padding:10px 16px 40px; line-height:1.9;}
+  .foot a{color:inherit;}
+  :focus-visible{outline:2.5px solid var(--accent); outline-offset:2px; border-radius:8px;}
+  @media (prefers-reduced-motion:reduce){*{transition:none !important; animation:none !important;}}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">R</div>
+    <div class="brand-t">
+      <b>数据分析</b>
+      <span>心理旋转实验 · 多被试汇总</span>
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <a class="link" href="./">← 返回实验</a>
+  <button class="link" id="themeBtn" style="cursor:pointer;font-family:inherit;">◐ 配色</button>
+</header>
+
+<main>
+  <!-- 上传 -->
+  <section class="card" id="uploadCard">
+    <span class="eyebrow">Step 1 · 载入数据</span>
+    <h1 class="title">把实验导出的 CSV 丢进来</h1>
+    <p class="lede">
+      支持本程序导出的 CSV / JSON，也兼容原版程序的 CSV（<code>subject_id, block, angle, char_type, rt, correct</code>）。
+      可一次选择多人的文件，全部在浏览器本地计算，不上传服务器。
+    </p>
+
+    <label class="drop" id="drop">
+      <b>拖拽文件到这里，或点击选择</b>
+      <span>CSV / JSON · 可多选 · 每个文件一名被试（也可含多人）</span>
+      <input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json" multiple />
+    </label>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="pickBtn">选择文件</button>
+      <button class="btn btn-ghost" id="sampleBtn">载入示例数据（模拟 24 人）</button>
+      <button class="btn btn-quiet" id="clearBtn" hidden>清空</button>
+    </div>
+
+    <div class="sect" style="margin-top:18px; padding-top:18px;">
+      <div class="sect-h"><h2 style="font-size:14px;">清洗口径</h2><p>改动后立即重新分析</p></div>
+      <div class="optrow">
+        <label>RT 下限 (ms)<input type="number" id="optMin" value="200" min="0" max="2000" step="50" /></label>
+        <label>RT 上限 (ms)<input type="number" id="optMax" value="3000" min="500" max="20000" step="100" /></label>
+        <label class="check"><input type="checkbox" id="optSd" checked /> 剔除每名被试 ±3SD</label>
+        <label class="check"><input type="checkbox" id="optMain" checked /> 仅正式阶段</label>
+      </div>
+    </div>
+
+    <div class="chips" id="fileChips"></div>
+    <div id="uploadMsg"></div>
+
+    <div class="banner" id="schemaBanner">
+      <div>
+        <b>数据要求：</b>每个试次一行；至少包含被试、角度、字符类型、反应时、正确性。
+        若含 <code>phase</code> 列，默认只分析 <code>main</code>；原版数据用 <code>block &gt; 0</code> 判定正式阶段。
+      </div>
+    </div>
+  </section>
+
+  <!-- 报告 -->
+  <div id="report" hidden>
+
+    <section class="card">
+      <span class="eyebrow">Step 2 · 数据概览</span>
+      <h2 class="title" style="font-size:22px;margin-bottom:14px;">清洗后的样本</h2>
+      <div class="stats" id="overviewStats"></div>
+      <div class="chips" id="overviewChips"></div>
+      <div id="overviewNotes" class="notes"></div>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>群体反应时 × 旋转角度</h2><p>误差线 = ±1 SE（以被试为单位）</p></div>
+      <svg class="chart" id="chartRT" viewBox="0 0 760 360" role="img" aria-label="群体反应时随旋转角度变化"></svg>
+      <div class="tbl-wrap" style="margin-top:14px;">
+        <table id="tblCells">
+          <thead><tr><th>角度</th><th>正写 M (SE)</th><th>反写 M (SE)</th><th>镜像成本</th><th>正确率</th><th>n 被试</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="notes" id="cellsNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>重复测量方差分析</h2><p>2（字符类型）× 6（旋转角度），被试内</p></div>
+      <div class="tbl-wrap">
+        <table id="tblAnova">
+          <thead><tr><th>效应</th><th>SS</th><th>df</th><th>MS</th><th>F</th><th>p</th><th>偏 η²</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="notes" id="anovaNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>心理旋转速度</h2><p>对每名被试 0°–180° 的正确试次做线性回归，速度 = 1000 / 斜率</p></div>
+      <div class="grid2">
+        <div>
+          <svg class="chart" id="chartSpeed" viewBox="0 0 460 300" role="img" aria-label="被试旋转速度分布"></svg>
+        </div>
+        <div>
+          <div class="tbl-wrap">
+            <table id="tblSpeed">
+              <thead><tr><th>指标</th><th>值</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p class="notes" id="speedNote"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>关键效应检验</h2><p>配对 t 检验，df = 被试数 − 1</p></div>
+      <div class="tbl-wrap">
+        <table id="tblTests">
+          <thead><tr><th>检验</th><th>差值 M</th><th>差值 SD</th><th>t</th><th>df</th><th>p</th><th>Cohen's dz</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="notes" id="testsNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>线性 vs 二次模型</h2><p>0°–180° 条件均值，比较旋转是否为匀速过程</p></div>
+      <div class="tbl-wrap">
+        <table id="tblModel">
+          <thead><tr><th>模型</th><th>R²</th><th>SSE</th><th>AIC</th><th>ΔAIC</th><th>二次项 t (p)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="notes" id="modelNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>ex-Gaussian 拟合</h2><p>把 RT 分布拆成 μ（核心加工）、σ（稳定性）、τ（长尾卡顿）</p></div>
+      <div class="tbl-wrap">
+        <table id="tblExG">
+          <thead><tr><th>条件</th><th>μ (ms)</th><th>σ (ms)</th><th>τ (ms)</th><th>n 被试</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="notes" id="exgNote"></p>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>个体差异</h2><p>逐被试指标，可直接粘进报告</p></div>
+      <div class="tbl-wrap">
+        <table id="tblSubjects">
+          <thead><tr><th>被试</th><th>有效试次</th><th>平均 RT</th><th>正确率</th><th>斜率 (ms/°)</th><th>速度 (°/s)</th><th>镜像成本</th><th>τ 正写</th><th>τ 反写</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="sect-h"><h2>导出</h2><p>汇总表与可粘贴的 Markdown 结果段落</p></div>
+      <div class="actions">
+        <button class="btn btn-primary" id="dlGroup">下载条件汇总 CSV</button>
+        <button class="btn btn-ghost" id="dlSubjects">下载被试汇总 CSV</button>
+        <button class="btn btn-ghost" id="dlReport">下载 Markdown 报告</button>
+        <button class="btn btn-quiet" id="copyMd">复制结果文本</button>
+      </div>
+      <p class="notes" id="exportNote"></p>
+    </section>
+
+  </div>
+
+  <div class="foot">
+    所有计算在本地浏览器完成 · 无网络请求 · 统计实现见 <code>analysis.html</code> 内注释<br />
+    方法参照 Cooper &amp; Shepard (1973)、Ratcliff (1979) ex-Gaussian、Lacquaniti 等
+  </div>
+</main>
+
+<script>
+/* =========================================================================
+   心理旋转实验 · 数据分析模块
+   -------------------------------------------------------------------------
+   流程：读文件 → 规整字段 → 清洗 → 逐被试指标 → 组水平统计 → 渲染/导出
+   统计实现均为零依赖手写：
+     · 配对 t 检验（不完全 beta 函数求 p）
+     · 2×6 被试内重复测量 ANOVA（三个误差项分别检验）
+     · 0–180° OLS 回归（旋转速度）与线性/二次模型比较（AIC、系数 t）
+     · ex-Gaussian 最大似然拟合（Nelder–Mead，多起点）
+   ========================================================================= */
+
+const ANG = [0, 60, 120, 180, 240, 300];
+const TYPES = ["normal", "mirror"];
+const TYPE_CN = { normal: "正写 R", mirror: "反写 Я" };
+const THEME_KEY = "mre.theme.v1";
+
+/* ---------------- 通用工具 ---------------- */
+const $ = (id) => document.getElementById(id);
+const sum = (a) => a.reduce((s, v) => s + v, 0);
+const mean = (a) => (a.length ? sum(a) / a.length : NaN);
+const sd = (a) => {
+  if (a.length < 2) return NaN;
+  const m = mean(a);
+  return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+};
+const se = (a) => sd(a) / Math.sqrt(a.length);
+const med = (a) => {
+  if (!a.length) return NaN;
+  const b = a.slice().sort((x, y) => x - y);
+  const k = (b.length - 1) / 2;
+  return (b[Math.floor(k)] + b[Math.ceil(k)]) / 2;
+};
+const fmt = (v, d = 0) => (Number.isFinite(v) ? v.toFixed(d) : "—");
+const fmtP = (p) => (!Number.isFinite(p) ? "—" : p < 0.001 ? "< .001" : p.toFixed(3).replace(/^0/, ""));
+
+/* ---------------- 分布函数 ---------------- */
+function gammaln(x) {
+  const c = [76.18009172947146, -86.50532032941677, 24.01409824083091,
+    -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+  let y = x, tmp = x + 5.5;
+  tmp -= (x + 0.5) * Math.log(tmp);
+  let ser = 1.000000000190015;
+  for (let j = 0; j < 6; j++) ser += c[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005 * ser / x);
+}
+function betacf(a, b, x) {
+  const MAXIT = 300, EPS = 3e-14, FPMIN = 1e-300;
+  const qab = a + b, qap = a + 1, qam = a - 1;
+  let c = 1, d = 1 - qab * x / qap;
+  if (Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1 / d;
+  let h = d;
+  for (let m = 1; m <= MAXIT; m++) {
+    const m2 = 2 * m;
+    let aa = m * (b - m) * x / ((qam + m2) * (a + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d; h *= d * c;
+    aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
+    d = 1 + aa * d; if (Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa / c; if (Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < EPS) break;
+  }
+  return h;
+}
+function betai(a, b, x) {
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
+  const bt = Math.exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x));
+  return x < (a + 1) / (a + b + 2) ? bt * betacf(a, b, x) / a : 1 - bt * betacf(b, a, 1 - x) / b;
+}
+/** 双尾 t 检验 p 值 */
+const pFromT = (t, df) => (Number.isFinite(t) && df > 0 ? betai(df / 2, 0.5, df / (df + t * t)) : NaN);
+/** F 检验 p 值 */
+const pFromF = (F, df1, df2) => (Number.isFinite(F) && F > 0 ? betai(df2 / 2, df1 / 2, df2 / (df2 + df1 * F)) : NaN);
+
+function erf(x) {
+  const s = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+}
+function logErfc(x) {
+  if (x > 8) {
+    // 渐近展开，避免 1-erf 下溢
+    return -x * x - Math.log(x * Math.sqrt(Math.PI)) + Math.log(1 - 1 / (2 * x * x) + 3 / (4 * x ** 4));
+  }
+  return Math.log(Math.max(1 - erf(x), 1e-300));
+}
+
+/* ---------------- CSV / JSON 解析 ---------------- */
+function detectDelim(line) {
+  const cands = [",", ";", "\t"];
+  let best = ",", bestN = -1;
+  for (const c of cands) {
+    const n = line.split(c).length;
+    if (n > bestN) { bestN = n; best = c; }
+  }
+  return best;
+}
+function parseCsv(text) {
+  text = text.replace(/^\uFEFF/, "");
+  const firstLine = text.slice(0, text.indexOf("\n") >= 0 ? text.indexOf("\n") : text.length);
+  const d = detectDelim(firstLine);
+  const rows = [];
+  let field = "", row = [], inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQ = false;
+      } else field += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === d) { row.push(field); field = ""; }
+    else if (ch === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else if (ch === "\r") { /* skip */ }
+    else field += ch;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  const clean = rows.filter((r) => r.some((c) => String(c).trim() !== ""));
+  if (!clean.length) return [];
+  const header = clean[0].map((h) => h.trim());
+  return clean.slice(1).map((r) => {
+    const o = {};
+    header.forEach((h, i) => (o[h] = (r[i] ?? "").trim()));
+    return o;
+  });
+}
+
+const pick = (o, keys) => {
+  for (const k of keys) {
+    if (o[k] !== undefined && o[k] !== "") return o[k];
+    const lk = Object.keys(o).find((x) => x.toLowerCase() === k.toLowerCase());
+    if (lk && o[lk] !== "") return o[lk];
+  }
+  return "";
+};
+
+function normalizeRecords(records, fallbackId) {
+  const out = [];
+  for (const r of records) {
+    const sidRaw = pick(r, ["subject_id", "subject", "sub", "id", "被试", "被试编号"]);
+    const angleRaw = pick(r, ["angle", "rotation", "角度"]);
+    const typeRaw = String(pick(r, ["char_type", "type", "condition", "字符类型"])).toLowerCase();
+    const rtRaw = pick(r, ["rt_ms", "rt", "RT", "reaction_time", "反应时"]);
+    const okRaw = pick(r, ["correct", "accuracy", "is_correct", "正确"]);
+    const phaseRaw = String(pick(r, ["phase", "阶段"])).toLowerCase();
+    const blockRaw = pick(r, ["block"]);
+    const timeoutRaw = String(pick(r, ["is_timeout", "timeout"])).trim();
+
+    const angle = Number(angleRaw);
+    const rt = Number(rtRaw);
+    if (!Number.isFinite(angle) || !Number.isFinite(rt)) continue;
+
+    let type = typeRaw;
+    if (!type) {
+      type = String(pick(r, ["expected_key", "response_key"])).toLowerCase() === "j" ? "mirror" : "normal";
+    }
+    if (type === "m" || type === "mirrored" || type === "reverse" || type === "反写") type = "mirror";
+    if (type === "n" || type === "upright" || type === "正写") type = "normal";
+    if (type !== "normal" && type !== "mirror") type = "normal";
+
+    let correct = 1;
+    if (okRaw !== "") {
+      const c = String(okRaw).toLowerCase();
+      correct = (c === "1" || c === "true" || c === "y" || c === "yes" || c === "正确") ? 1 : 0;
+    }
+    const timeout = (timeoutRaw === "1" || timeoutRaw === "true") || rt <= 0;
+
+    let phase = phaseRaw;
+    if (!phase) phase = blockRaw !== "" && Number(blockRaw) === 0 ? "practice" : "main";
+
+    out.push({
+      sid: String(sidRaw || fallbackId || "S?").trim(),
+      angle, type, rt, correct, timeout, phase,
+      block: Number(blockRaw) || 0
+    });
+  }
+  return out;
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result));
+    fr.onerror = () => reject(fr.error);
+    fr.readAsText(file, "utf-8");
+  });
+}
+
+/* ---------------- 示例数据（模拟） ---------------- */
+function sampleRows() {
+  const rows = [];
+  // mulberry32：稳定、无精度损失的伪随机数
+  let a = 20260524;
+  const rnd = () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const gauss = () => {
+    const u = Math.max(rnd(), 1e-9), v = Math.max(rnd(), 1e-9);
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+  for (let s = 1; s <= 24; s++) {
+    const sid = "S" + String(s).padStart(3, "0");
+    const base = 545 + gauss() * 22;            // 个体截距
+    const slope = 2.75 + gauss() * 0.36;        // 个体旋转速率 ms/°
+    const mirrorCost = 100 + gauss() * 22;      // 镜像成本
+    const noise = 68;
+    for (let block = 1; block <= 2; block++) {
+      for (const angle of ANG) {
+        for (const type of TYPES) {
+          for (let k = 0; k < 10; k++) {
+            const eff = Math.min(angle, 360 - angle);
+            // ex-Gaussian：正态核心 + 指数长尾（反写的 τ 更大，对应报告的“卡顿”效应）
+            const tauComp = type === "mirror" ? 105 : 55;
+            let rt = base + slope * eff + (type === "mirror" ? mirrorCost : 0)
+                     + gauss() * noise
+                     + -Math.log(Math.max(1 - rnd(), 1e-9)) * tauComp;
+            rt = Math.max(180, Math.round(rt));
+            const correct = rnd() > (type === "mirror" ? 0.045 : 0.03) ? 1 : 0;
+            rows.push({ sid, angle, type, rt, correct, timeout: 0, phase: "main", block });
+          }
+        }
+      }
+    }
+  }
+  return rows;
+}
+
+/* ---------------- 清洗 ---------------- */
+function cleanRows(all, opt) {
+  const stats = { total: all.length, practice: 0, timeout: 0, wrong: 0, window: 0, sd3: 0, kept: 0 };
+  let rows = all.filter((r) => {
+    if (opt.mainOnly && r.phase === "practice") { stats.practice++; return false; }
+    return true;
+  });
+  rows = rows.filter((r) => {
+    if (r.timeout) { stats.timeout++; return false; }
+    if (!r.correct) { stats.wrong++; return false; }
+    if (r.rt < opt.minRT || r.rt > opt.maxRT) { stats.window++; return false; }
+    return true;
+  });
+
+  if (opt.trim3sd) {
+    const bySub = new Map();
+    rows.forEach((r) => {
+      if (!bySub.has(r.sid)) bySub.set(r.sid, []);
+      bySub.get(r.sid).push(r.rt);
+    });
+    const keep = [];
+    for (const r of rows) {
+      const arr = bySub.get(r.sid);
+      const m = mean(arr), s = sd(arr);
+      if (Number.isFinite(s) && Math.abs(r.rt - m) > 3 * s) { stats.sd3++; continue; }
+      keep.push(r);
+    }
+    rows = keep;
+  }
+  stats.kept = rows.length;
+  return { rows, stats };
+}
+
+/* ---------------- OLS ---------------- */
+function invert(m) {
+  const n = m.length;
+  const a = m.map((row, i) => row.concat(Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))));
+  for (let i = 0; i < n; i++) {
+    let p = i;
+    for (let r = i + 1; r < n; r++) if (Math.abs(a[r][i]) > Math.abs(a[p][i])) p = r;
+    if (Math.abs(a[p][i]) < 1e-12) return null;
+    [a[i], a[p]] = [a[p], a[i]];
+    const piv = a[i][i];
+    for (let j = 0; j < 2 * n; j++) a[i][j] /= piv;
+    for (let r = 0; r < n; r++) {
+      if (r === i) continue;
+      const f = a[r][i];
+      if (!f) continue;
+      for (let j = 0; j < 2 * n; j++) a[r][j] -= f * a[i][j];
+    }
+  }
+  return a.map((row) => row.slice(n));
+}
+
+function ols(xs, ys, degree) {
+  const n = xs.length;
+  const k = degree + 1;
+  if (n <= k + 1) return null;
+  const X = xs.map((x) => Array.from({ length: k }, (_, j) => x ** j));
+  const XtX = Array.from({ length: k }, (_, i) =>
+    Array.from({ length: k }, (_, j) => sum(X.map((row) => row[i] * row[j]))));
+  const Xty = Array.from({ length: k }, (_, i) => sum(X.map((row, a) => row[i] * ys[a])));
+  const inv = invert(XtX);
+  if (!inv) return null;
+  const coef = inv.map((row) => sum(row.map((v, j) => v * Xty[j])));
+  const pred = X.map((row) => sum(row.map((v, j) => v * coef[j])));
+  const sse = sum(ys.map((y, i) => (y - pred[i]) ** 2));
+  const m = mean(ys);
+  const sst = sum(ys.map((y) => (y - m) ** 2));
+  const dfRes = n - k;
+  const mse = sse / dfRes;
+  const r2 = sst > 0 ? 1 - sse / sst : NaN;
+  const aic = n * Math.log(sse / n) + 2 * k;
+  const seCoef = inv.map((row, i) => Math.sqrt(Math.max(mse * row[i], 0)));
+  const tCoef = coef.map((c, i) => (seCoef[i] > 0 ? c / seCoef[i] : NaN));
+  return { coef, sse, r2, aic, seCoef, tCoef, dfRes, n };
+}
+
+/* ---------------- 配对 t 检验 ---------------- */
+function pairedT(a, b) {
+  const d = [];
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    if (Number.isFinite(a[i]) && Number.isFinite(b[i])) d.push(a[i] - b[i]);
+  }
+  const n = d.length;
+  if (n < 2) return null;
+  const m = mean(d), s = sd(d);
+  if (!(s > 0)) return null;
+  const t = m / (s / Math.sqrt(n));
+  return { n, mean: m, sd: s, t, df: n - 1, p: pFromT(t, n - 1), dz: m / s };
+}
+
+/* ---------------- ex-Gaussian 拟合 ---------------- */
+function logPdfExG(x, mu, sig, tau) {
+  const z = (mu + sig * sig / tau - x) / (Math.SQRT2 * sig);
+  return -Math.log(2 * tau) + (2 * mu + sig * sig / tau - 2 * x) / (2 * tau) + logErfc(z);
+}
+
+function nelderMead(f, x0, step, maxIter = 260) {
+  const n = x0.length;
+  let pts = [{ x: x0.slice(), v: f(x0) }];
+  for (let i = 0; i < n; i++) {
+    const x = x0.slice();
+    x[i] += step[i];
+    pts.push({ x, v: f(x) });
+  }
+  const alpha = 1, gamma = 2, rho = 0.5, sigma = 0.5;
+  for (let it = 0; it < maxIter; it++) {
+    pts.sort((a, b) => a.v - b.v);
+    const best = pts[0], worst = pts[n], second = pts[n - 1];
+    if (Math.abs(worst.v - best.v) < 1e-8) break;
+    const cen = Array.from({ length: n }, (_, i) => sum(pts.slice(0, n).map((p) => p.x[i])) / n);
+    const refl = cen.map((c, i) => c + alpha * (c - worst.x[i]));
+    const vr = f(refl);
+    if (vr < second.v && vr >= best.v) { pts[n] = { x: refl, v: vr }; continue; }
+    if (vr < best.v) {
+      const exp1 = cen.map((c, i) => c + gamma * (refl[i] - c));
+      const ve = f(exp1);
+      pts[n] = ve < vr ? { x: exp1, v: ve } : { x: refl, v: vr };
+      continue;
+    }
+    const con = cen.map((c, i) => c + rho * (worst.x[i] - c));
+    const vc = f(con);
+    if (vc < worst.v) { pts[n] = { x: con, v: vc }; continue; }
+    for (let i = 1; i <= n; i++) {
+      const x = pts[i].x.map((v, j) => best.x[j] + sigma * (v - best.x[j]));
+      pts[i] = { x, v: f(x) };
+    }
+  }
+  pts.sort((a, b) => a.v - b.v);
+  return pts[0];
+}
+
+function fitExGaussian(rts) {
+  if (rts.length < 40) return null;
+  const m = mean(rts), s = sd(rts);
+  if (!(s > 0)) return null;
+  const n = rts.length;
+  const negLL = (p) => {
+    const [mu, sig, tau] = p;
+    if (!(sig > 1) || !(tau > 1)) return 1e12;
+    let ll = 0;
+    for (let i = 0; i < n; i++) {
+      const v = logPdfExG(rts[i], mu, sig, tau);
+      if (!Number.isFinite(v)) return 1e12;
+      ll += v;
+    }
+    return -ll;
+  };
+  const starts = [
+    [m - 0.35 * s, 0.75 * s, 0.35 * s],
+    [m - 0.15 * s, 0.9 * s, 0.15 * s],
+    [m - 0.55 * s, 0.6 * s, 0.55 * s]
+  ];
+  let best = null;
+  for (const st of starts) {
+    const r = nelderMead(negLL, st, [0.25 * s, 0.25 * s, 0.25 * s]);
+    if (!best || r.v < best.v) best = r;
+  }
+  if (!best || best.v >= 1e12) return null;
+  return { mu: best.x[0], sigma: best.x[1], tau: best.x[2], ll: -best.v };
+}
+
+/* ---------------- 主分析 ---------------- */
+function analyze(rawRows, opt) {
+  const { rows, stats } = cleanRows(rawRows, opt);
+  const subjects = [...new Set(rows.map((r) => r.sid))].sort();
+
+  // 每被试 RT（正确、有效）
+  const subRT = new Map(subjects.map((s) => [s, []]));
+  rows.forEach((r) => subRT.get(r.sid).push(r.rt));
+
+  // 单元格
+  const cellRT = new Map();   // sid|angle|type -> [rt]
+  const cellAll = new Map();  // sid|angle|type -> {n, ok}
+  rows.forEach((r) => {
+    const k = r.sid + "|" + r.angle + "|" + r.type;
+    if (!cellRT.has(k)) cellRT.set(k, []);
+    cellRT.get(k).push(r.rt);
+  });
+  // 正确率分母用清洗前 main 数据（含错误与超时）
+  const accBase = new Map();
+  rawRows.filter((r) => !opt.mainOnly || r.phase !== "practice").forEach((r) => {
+    const k = r.sid + "|" + r.angle + "|" + r.type;
+    const o = accBase.get(k) || { n: 0, ok: 0 };
+    o.n += 1; o.ok += r.correct && !r.timeout ? 1 : 0;
+    accBase.set(k, o);
+  });
+
+  // 组水平单元格均值（跨被试等权）
+  const cells = {};
+  for (const a of ANG) {
+    cells[a] = {};
+    for (const t of TYPES) {
+      const perSub = subjects.map((s) => mean(cellRT.get(s + "|" + a + "|" + t) || [])).filter(Number.isFinite);
+      const accs = subjects.map((s) => {
+        const o = accBase.get(s + "|" + a + "|" + t);
+        return o && o.n ? o.ok / o.n : NaN;
+      }).filter(Number.isFinite);
+      cells[a][t] = { mean: mean(perSub), se: perSub.length > 1 ? se(perSub) : NaN, n: perSub.length, acc: mean(accs) };
+    }
+  }
+
+  // 被试级指标
+  const perSubject = subjects.map((sid) => {
+    const all = rows.filter((r) => r.sid === sid);
+    const low = all.filter((r) => r.angle <= 180);
+    let slope = NaN, intercept = NaN, r2 = NaN;
+    const byAngle = new Map();
+    low.forEach((r) => {
+      if (!byAngle.has(r.angle)) byAngle.set(r.angle, []);
+      byAngle.get(r.angle).push(r.rt);
+    });
+    const xs = [...byAngle.keys()].sort((a, b) => a - b);
+    if (xs.length >= 2) {
+      const ys = xs.map((a) => mean(byAngle.get(a)));
+      const fit = ols(xs, ys, 1);
+      if (fit) { slope = fit.coef[1]; intercept = fit.coef[0]; r2 = fit.r2; }
+    }
+    const normal = all.filter((r) => r.type === "normal").map((r) => r.rt);
+    const mirror = all.filter((r) => r.type === "mirror").map((r) => r.rt);
+    const accAll = rawRows.filter((r) => r.sid === sid && (!opt.mainOnly || r.phase !== "practice"));
+    return {
+      sid,
+      n: all.length,
+      rt: mean(all),
+      acc: accAll.length ? sum(accAll.map((r) => (r.correct && !r.timeout ? 1 : 0))) / accAll.length * 100 : NaN,
+      slope,
+      speed: slope > 0 ? 1000 / slope : NaN,
+      r2,
+      mirrorCost: mean(mirror) - mean(normal)
+    };
+  });
+
+  const speeds = perSubject.map((s) => s.speed).filter(Number.isFinite);
+  const costs = perSubject.map((s) => s.mirrorCost).filter(Number.isFinite);
+
+  // 每被试每角度均值（合并类型），用于对称性检验
+  const subByAngle = new Map();
+  subjects.forEach((s) => subByAngle.set(s, {}));
+  rows.forEach((r) => {
+    const o = subByAngle.get(r.sid);
+    if (!o[r.angle]) o[r.angle] = [];
+    o[r.angle].push(r.rt);
+  });
+  const angleVec = (a) => subjects.map((s) => mean(subByAngle.get(s)[a] || []));
+
+  const tests = [];
+  const accT = costs.length >= 2 ? pairedT(costs, costs.map(() => 0)) : null;
+  if (accT) tests.push({ name: "镜像成本 > 0（反写 − 正写）", ...accT });
+  const t60_300 = pairedT(angleVec(60), angleVec(300));
+  if (t60_300) tests.push({ name: "对称性 60° vs 300°", ...t60_300 });
+  const t120_240 = pairedT(angleVec(120), angleVec(240));
+  if (t120_240) tests.push({ name: "对称性 120° vs 240°", ...t120_240 });
+
+  // RM-ANOVA（需要完整 12 格）
+  const anova = repeatedAnova(subjects, cellRT);
+
+  // 线性 vs 二次（0–180 条件均值）
+  const mx = [], my = [];
+  for (const a of [0, 60, 120, 180]) {
+    for (const t of TYPES) {
+      if (Number.isFinite(cells[a][t].mean)) { mx.push(a); my.push(cells[a][t].mean); }
+    }
+  }
+  const lin = ols(mx, my, 1);
+  const quad = ols(mx, my, 2);
+
+  // ex-Gaussian
+  // —— ex-Gaussian 预处理：先去掉「角度 × 类型」的均值差异，再合并同类型试次
+  //    否则 0°–300° 的系统性差异会被误读成分布的长尾（σ、τ 虚高）
+  const cellMeanMap = new Map();
+  rows.forEach((r) => {
+    const k = r.sid + "|" + r.angle + "|" + r.type;
+    const o = cellMeanMap.get(k) || { s: 0, n: 0 };
+    o.s += r.rt; o.n += 1;
+    cellMeanMap.set(k, o);
+  });
+  cellMeanMap.forEach((o, k) => cellMeanMap.set(k, o.s / o.n));
+  const subGrand = new Map();
+  subjects.forEach((sid) => {
+    subGrand.set(sid, mean(rows.filter((r) => r.sid === sid).map((r) => r.rt)));
+  });
+  const residRows = rows.map((r) => ({
+    sid: r.sid, type: r.type,
+    v: r.rt - cellMeanMap.get(r.sid + "|" + r.angle + "|" + r.type) + subGrand.get(r.sid)
+  }));
+
+  const exg = { normal: { mu: [], sigma: [], tau: [] }, mirror: { mu: [], sigma: [], tau: [] } };
+  const exgBySub = new Map();
+  subjects.forEach((sid) => {
+    const store = {};
+    for (const t of TYPES) {
+      const rts = residRows.filter((r) => r.sid === sid && r.type === t).map((r) => r.v);
+      if (rts.length < 60) continue;
+      const f = fitExGaussian(rts);
+      if (f) {
+        exg[t].mu.push(f.mu); exg[t].sigma.push(f.sigma); exg[t].tau.push(f.tau);
+        store[t] = f;
+      }
+    }
+    if (Object.keys(store).length) exgBySub.set(sid, store);
+  });
+  // 合并拟合：把同一条件的全部试次放在一起，减少小样本偏差（参考值）
+  const pooled = {};
+  TYPES.forEach((t) => {
+    const arr = residRows.filter((r) => r.type === t).map((r) => r.v);
+    if (arr.length >= 400) pooled[t] = fitExGaussian(arr.length > 5000 ? arr.slice(0, 5000) : arr);
+  });
+
+  const tauT = pairedT(exg.mirror.tau, exg.normal.tau);
+  const muT = pairedT(exg.mirror.mu, exg.normal.mu);
+
+  return {
+    raw: rawRows, rows, stats, subjects, cells, perSubject,
+    speed: { values: speeds, mean: mean(speeds), sd: sd(speeds), min: Math.min(...speeds), max: Math.max(...speeds), median: med(speeds) },
+    cost: { values: costs, mean: mean(costs), sd: sd(costs) },
+    tests, anova, lin, quad, exg, exgBySub, pooled, tauT, muT, angleVec, opt
+  };
+}
+
+/** 2 × A 被试内 ANOVA；单元格均值，三个误差项分别检验 */
+function repeatedAnova(subjects, cellRT) {
+  const a = ANG.length, b = TYPES.length;
+  const X = new Map();
+  const usable = [];
+  for (const s of subjects) {
+    const grid = [];
+    let complete = true;
+    for (const ang of ANG) {
+      const row = [];
+      for (const t of TYPES) {
+        const v = mean(cellRT.get(s + "|" + ang + "|" + t) || []);
+        if (!Number.isFinite(v)) complete = false;
+        row.push(v);
+      }
+      grid.push(row);
+    }
+    if (complete) { usable.push(s); X.set(s, grid); }
+  }
+  const n = usable.length;
+  if (n < 2) return null;
+
+  const all = [];
+  usable.forEach((s) => X.get(s).forEach((row) => row.forEach((v) => all.push(v))));
+  const GM = mean(all);
+
+  const mSub = usable.map((s) => mean(X.get(s).flat()));
+  const mAng = ANG.map((_, i) => mean(usable.map((s) => mean(X.get(s)[i]))));
+  const mTyp = TYPES.map((_, j) => mean(usable.map((s) => mean(X.get(s).map((r) => r[j])))));
+  const mCell = ANG.map((_, i) => TYPES.map((_, j) => mean(usable.map((s) => X.get(s)[i][j]))));
+
+  const ssTotal = sum(all.map((v) => (v - GM) ** 2));
+  const ssSub = a * b * sum(mSub.map((v) => (v - GM) ** 2));
+  const ssA = n * b * sum(mAng.map((v) => (v - GM) ** 2));
+  const ssB = n * a * sum(mTyp.map((v) => (v - GM) ** 2));
+  const ssAB = n * sum(mCell.flat().map((v) => (v - GM) ** 2)) - ssA - ssB;
+
+  let ssAS = 0, ssBS = 0, ssABS = 0;
+  usable.forEach((s) => {
+    const g = X.get(s);
+    const ms = mean(g.flat());
+    for (let i = 0; i < a; i++) {
+      const rowMean = mean(g[i]);
+      ssAS += b * (rowMean - ms - mAng[i] + GM) ** 2;
+    }
+  });
+  // B×S：先把每被试在每个类型上跨角度平均
+  ssBS = 0;
+  usable.forEach((s) => {
+    const g = X.get(s);
+    const ms = mean(g.flat());
+    for (let j = 0; j < b; j++) {
+      const mSj = mean(g.map((r) => r[j]));
+      ssBS += a * (mSj - ms - mTyp[j] + GM) ** 2;
+    }
+  });
+  ssABS = 0;
+  usable.forEach((s) => {
+    const g = X.get(s);
+    const ms = mean(g.flat());
+    for (let i = 0; i < a; i++) {
+      const mSa = mean(g[i]);
+      for (let j = 0; j < b; j++) {
+        const mSb = mean(g.map((r) => r[j]));
+        ssABS += (g[i][j] - mSa - mSb + ms) ** 2;
+      }
+    }
+  });
+
+  const mk = (name, ss, df, errSS, errDf) => {
+    const ms = ss / df;
+    const errMS = errSS / errDf;
+    const F = errMS > 0 ? ms / errMS : NaN;
+    return { name, ss, df, ms, F, p: pFromF(F, df, errDf), eta: ss / (ss + errSS) };
+  };
+
+  return {
+    n,
+    rows: [
+      mk("旋转角度", ssA, a - 1, ssAS, (n - 1) * (a - 1)),
+      mk("字符类型", ssB, b - 1, ssBS, (n - 1) * (b - 1)),
+      mk("角度 × 类型", ssAB, (a - 1) * (b - 1), ssABS, (n - 1) * (a - 1) * (b - 1))
+    ],
+    ssTotal
+  };
+}
+
+/* ---------------- 渲染 ---------------- */
+let RES = null;
+let RAW = [];
+let SOURCES = [];
+
+function currentOpts() {
+  const min = Number($("optMin").value), max = Number($("optMax").value);
+  return {
+    minRT: Number.isFinite(min) && min >= 0 ? min : 200,
+    maxRT: Number.isFinite(max) && max > 0 ? max : 3000,
+    trim3sd: $("optSd").checked,
+    mainOnly: $("optMain").checked
+  };
+}
+
+function refreshAnalysis() {
+  if (!RAW.length) return;
+  RES = analyze(RAW, currentOpts());
+  render(RES);
+}
+
+function renderOverview(R) {
+  const st = R.stats;
+  $("overviewStats").innerHTML = [
+    ["被试数", R.subjects.length, ""],
+    ["总试次", st.total, ""],
+    ["进入分析", st.kept, "试次"],
+    ["剔除", st.practice + st.timeout + st.wrong + st.window + st.sd3, "试次"],
+    ["有效率", st.total ? fmt((st.kept / st.total) * 100, 1) : "—", "%"]
+  ].map(([k, v, u]) => `<div class="stat"><span>${k}</span><b>${v}<em>${u}</em></b></div>`).join("");
+
+  const bits = [];
+  if (st.practice) bits.push(`<span class="chip">练习阶段 <b>${st.practice}</b></span>`);
+  if (st.timeout) bits.push(`<span class="chip">超时 <b>${st.timeout}</b></span>`);
+  if (st.wrong) bits.push(`<span class="chip">错误反应 <b>${st.wrong}</b></span>`);
+  if (st.window) bits.push(`<span class="chip">RT 窗口外 <b>${st.window}</b></span>`);
+  if (st.sd3) bits.push(`<span class="chip">±3SD <b>${st.sd3}</b></span>`);
+  $("overviewChips").innerHTML = bits.join("");
+
+  const notes = [`清洗口径：仅正式阶段、正确反应、RT ∈ [${R.opt.minRT}, ${R.opt.maxRT}] ms${R.opt.trim3sd ? "，并剔除每名被试 ±3SD 之外的试次" : ""}。`];
+  if (R.anova && R.anova.n < R.subjects.length) {
+    notes.push(`<span style="color:var(--warn)">方差分析仅纳入 ${R.anova.n} 名 12 个条件齐全的被试（${R.subjects.length - R.anova.n} 名数据不完整被排除）。</span>`);
+  }
+  $("overviewNotes").innerHTML = notes.join(" ");
+}
+
+function renderRiskChart(R) {
+  const W = 760, H = 360;
+  const pad = { l: 62, r: 22, t: 22, b: 48 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const vals = [];
+  ANG.forEach((a) => TYPES.forEach((t) => {
+    const c = R.cells[a][t];
+    if (Number.isFinite(c.mean)) vals.push(c.mean + (c.se || 0));
+  }));
+  const yMax = Math.max(600, Math.ceil((Math.max(...vals) + 100) / 200) * 200);
+  const x = (a) => pad.l + (a / 300) * iw;
+  const y = (v) => pad.t + ih - (v / yMax) * ih;
+
+  let s = "";
+  const step = yMax > 1600 ? 400 : 200;
+  for (let v = 0; v <= yMax; v += step) {
+    s += `<line x1="${pad.l}" y1="${y(v)}" x2="${W - pad.r}" y2="${y(v)}" stroke="var(--line)"/>`;
+    s += `<text x="${pad.l - 10}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;
+  }
+  ANG.forEach((a) => {
+    s += `<line x1="${x(a)}" y1="${pad.t + ih}" x2="${x(a)}" y2="${pad.t + ih + 5}" stroke="var(--line-strong)"/>`;
+    s += `<text x="${x(a)}" y="${pad.t + ih + 21}" text-anchor="middle" font-size="11" fill="var(--muted)">${a}°</text>`;
+  });
+  s += `<text x="${pad.l + iw / 2}" y="${H - 6}" text-anchor="middle" font-size="11" fill="var(--muted)">旋转角度</text>`;
+  s += `<text x="16" y="${pad.t + ih / 2}" text-anchor="middle" font-size="11" fill="var(--muted)" transform="rotate(-90 16 ${pad.t + ih / 2})">反应时 (ms)</text>`;
+
+  const series = [
+    { t: "normal", color: "var(--series-1)", label: "正写 R" },
+    { t: "mirror", color: "var(--series-2)", label: "反写 Я" }
+  ];
+  series.forEach((se) => {
+    const pts = ANG.map((a) => ({ a, c: R.cells[a][se.t] })).filter((p) => Number.isFinite(p.c.mean));
+    // 误差线
+    pts.forEach((p) => {
+      const v = p.c.mean, e = Number.isFinite(p.c.se) ? p.c.se : 0;
+      if (e > 0) s += `<line x1="${x(p.a)}" y1="${y(v - e)}" x2="${x(p.a)}" y2="${y(v + e)}" stroke="${se.color}" stroke-width="1.4" opacity=".55"/>`;
+      s += `<line x1="${x(p.a) - 4}" y1="${y(v - e)}" x2="${x(p.a) + 4}" y2="${y(v - e)}" stroke="${se.color}" stroke-width="1.4" opacity=".55"/>`;
+      s += `<line x1="${x(p.a) - 4}" y1="${y(v + e)}" x2="${x(p.a) + 4}" y2="${y(v + e)}" stroke="${se.color}" stroke-width="1.4" opacity=".55"/>`;
+    });
+    if (pts.length > 1) {
+      const d = pts.map((p, i) => `${i ? "L" : "M"}${x(p.a)} ${y(p.c.mean)}`).join(" ");
+      s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.6" stroke-linejoin="round"/>`;
+    }
+    pts.forEach((p) => {
+      s += `<circle cx="${x(p.a)}" cy="${y(p.c.mean)}" r="4.2" fill="var(--panel)" stroke="${se.color}" stroke-width="2.4"/>`;
+    });
+  });
+  let lx = W - pad.r - 150;
+  series.forEach((se) => {
+    s += `<circle cx="${lx}" cy="${pad.t + 4}" r="4" fill="${se.color}"/>`;
+    s += `<text x="${lx + 10}" y="${pad.t + 8}" font-size="11.5" fill="var(--ink-2)">${se.label}</text>`;
+    lx += 78;
+  });
+  $("chartRT").innerHTML = s;
+}
+
+function renderCells(R) {
+  const tb = $("tblCells").querySelector("tbody");
+  tb.innerHTML = ANG.map((a) => {
+    const n = R.cells[a].normal, m = R.cells[a].mirror;
+    const cost = Number.isFinite(n.mean) && Number.isFinite(m.mean) ? m.mean - n.mean : NaN;
+    const acc = mean([n.acc, m.acc].filter(Number.isFinite));
+    return `<tr>
+      <td>${a}°</td>
+      <td>${fmt(n.mean)} <span style="color:var(--muted)">(${fmt(n.se)})</span></td>
+      <td>${fmt(m.mean)} <span style="color:var(--muted)">(${fmt(m.se)})</span></td>
+      <td>${fmt(cost)}</td>
+      <td>${fmt(acc, 1)}%</td>
+      <td>${n.n}</td>
+    </tr>`;
+  }).join("");
+  $("cellsNote").innerHTML = "M = 被试条件均值，SE = 被试均值标准误。正确率以清洗前的正式试次为分母（超时计为错误）。";
+}
+
+function renderAnova(R) {
+  const tb = $("tblAnova").querySelector("tbody");
+  if (!R.anova) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:left;color:var(--muted)">数据不足（至少需要 2 名完成全部 12 个条件的被试）。</td></tr>`;
+    $("anovaNote").textContent = "";
+    return;
+  }
+  tb.innerHTML = R.anova.rows.map((r) => `<tr class="${r.p < 0.05 ? "sig" : ""}">
+      <td>${r.name}</td><td>${fmt(r.ss, 0)}</td><td>${r.df}</td><td>${fmt(r.ms, 0)}</td>
+      <td>${fmt(r.F, 2)}</td><td>${fmtP(r.p)}</td><td>${fmt(r.eta, 2)}</td>
+    </tr>`).join("");
+  $("anovaNote").innerHTML =
+    `N = ${R.anova.n}，三个效应各自使用对应的「效应 × 被试」误差项。` +
+    `未做 Greenhouse–Geisser 校正（球形性假设未检验）；若角度效应自由度较大而球形性可疑，请用 R（<code>afex::aov_ez</code>）复核。`;
+}
+
+function renderSpeed(R) {
+  const sp = R.speed;
+  const W = 460, H = 300, pad = { l: 46, r: 16, t: 20, b: 42 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const vals = sp.values;
+  if (!vals.length) { $("chartSpeed").innerHTML = ""; }
+  else {
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const bins = Math.max(5, Math.min(12, Math.ceil(Math.sqrt(vals.length * 2))));
+    const w = (hi - lo) / bins || 1;
+    const counts = Array(bins).fill(0);
+    vals.forEach((v) => { counts[Math.min(bins - 1, Math.floor((v - lo) / w))] += 1; });
+    const cMax = Math.max(...counts, 1);
+    let s = "";
+    for (let i = 0; i <= cMax; i++) {
+      const yy = pad.t + ih - (i / cMax) * ih;
+      s += `<line x1="${pad.l}" y1="${yy}" x2="${W - pad.r}" y2="${yy}" stroke="var(--line)"/>`;
+      if (i % Math.max(1, Math.ceil(cMax / 4)) === 0)
+        s += `<text x="${pad.l - 8}" y="${yy + 4}" text-anchor="end" font-size="10.5" fill="var(--muted)">${i}</text>`;
+    }
+    counts.forEach((c, i) => {
+      const bw = iw / bins;
+      const h = (c / cMax) * ih;
+      const xx = pad.l + i * bw + bw * 0.14;
+      s += `<rect x="${xx}" y="${pad.t + ih - h}" width="${bw * 0.72}" height="${h}" rx="3" fill="var(--series-1)" opacity=".8"/>`;
+    });
+    const mx = pad.l + ((sp.mean - lo) / (hi - lo || 1)) * iw;
+    s += `<line x1="${mx}" y1="${pad.t}" x2="${mx}" y2="${pad.t + ih}" stroke="var(--series-2)" stroke-width="1.6" stroke-dasharray="5 4"/>`;
+    s += `<text x="${mx + 6}" y="${pad.t + 12}" font-size="10.5" fill="var(--series-2)">M = ${fmt(sp.mean)}</text>`;
+    s += `<text x="${pad.l + iw / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">旋转速度 (°/s)</text>`;
+    s += `<text x="14" y="${pad.t + ih / 2}" text-anchor="middle" font-size="11" fill="var(--muted)" transform="rotate(-90 14 ${pad.t + ih / 2})">人数</text>`;
+    $("chartSpeed").innerHTML = s;
+  }
+
+  const tb = $("tblSpeed").querySelector("tbody");
+  tb.innerHTML = [
+    ["平均速度", `${fmt(sp.mean)} °/s`],
+    ["标准差", `${fmt(sp.sd)} °/s`],
+    ["中位数", `${fmt(sp.median)} °/s`],
+    ["范围", `${fmt(sp.min)} – ${fmt(sp.max)} °/s`],
+    ["被试数", sp.values.length]
+  ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+  $("speedNote").innerHTML = `速度 = 1000 / 斜率（斜率单位 ms/°）。Cooper &amp; Shepard (1973) 报告约 <b>360 °/s</b>；个体差异通常很大。`;
+}
+
+function renderTests(R) {
+  const tb = $("tblTests").querySelector("tbody");
+  if (!R.tests.length) {
+    tb.innerHTML = `<tr><td colspan="7" style="text-align:left;color:var(--muted)">样本不足，无法做配对检验。</td></tr>`;
+  } else {
+    tb.innerHTML = R.tests.map((t) => `<tr class="${t.p < 0.05 ? "sig" : ""}">
+      <td>${t.name}</td><td>${fmt(t.mean, 1)}</td><td>${fmt(t.sd, 1)}</td>
+      <td>${fmt(t.t, 2)}</td><td>${t.df}</td><td>${fmtP(t.p)}</td><td>${fmt(t.dz, 2)}</td>
+    </tr>`).join("");
+  }
+  $("testsNote").innerHTML = `差值为「前者 − 后者」的被试内均值；Cohen's dz = 差值均值 / 差值标准差。未做多重比较校正。`;
+}
+
+function renderModel(R) {
+  const tb = $("tblModel").querySelector("tbody");
+  if (!R.lin || !R.quad) {
+    tb.innerHTML = `<tr><td colspan="6" style="text-align:left;color:var(--muted)">条件均值不足，无法拟合。</td></tr>`;
+    $("modelNote").textContent = "";
+    return;
+  }
+  const dAIC = R.quad.aic - R.lin.aic;
+  const t2 = R.quad.tCoef[2], p2 = pFromT(t2, R.quad.dfRes);
+  tb.innerHTML = `
+    <tr class="${Math.abs(dAIC) < 2 ? "" : dAIC > 0 ? "sig" : ""}">
+      <td>线性 RT = ${fmt(R.lin.coef[1], 3)}·θ + ${fmt(R.lin.coef[0], 1)}</td>
+      <td>${fmt(R.lin.r2, 3)}</td><td>${fmt(R.lin.sse, 0)}</td><td>${fmt(R.lin.aic, 1)}</td><td>0</td><td>—</td>
+    </tr>
+    <tr>
+      <td>二次 RT = a·θ² + b·θ + c</td>
+      <td>${fmt(R.quad.r2, 3)}</td><td>${fmt(R.quad.sse, 0)}</td><td>${fmt(R.quad.aic, 1)}</td>
+      <td>${fmt(dAIC, 1)}</td><td>${fmt(t2, 2)} (${fmtP(p2)})</td>
+    </tr>`;
+  const verdict = dAIC > 2 ? "线性模型更优（ΔAIC &gt; 2），支持匀速旋转" :
+    dAIC < -2 ? "二次模型更优（ΔAIC &lt; −2），提示非线性" : "两模型难以区分（|ΔAIC| ≤ 2）";
+  $("modelNote").innerHTML = `${verdict}。二次项系数 = ${fmt(R.quad.coef[2], 5)}，t(${R.quad.dfRes}) = ${fmt(t2, 2)}，p = ${fmtP(p2)}。` +
+    ` 注意：这里只用了 ${R.quad.n} 个条件均值（0°–180° × 两种类型），检验力有限。`;
+}
+
+function renderExG(R) {
+  const tb = $("tblExG").querySelector("tbody");
+  let html = TYPES.map((t) => {
+    const e = R.exg[t];
+    return `<tr>
+      <td>${TYPE_CN[t]} · 被试均值</td>
+      <td>${fmt(mean(e.mu), 1)}</td><td>${fmt(mean(e.sigma), 1)}</td><td>${fmt(mean(e.tau), 1)}</td>
+      <td>${e.tau.length}</td>
+    </tr>`;
+  }).join("");
+  TYPES.forEach((t) => {
+    const f = R.pooled && R.pooled[t];
+    if (!f) return;
+    html += `<tr style="color:var(--muted)">
+      <td>${TYPE_CN[t]} · 合并拟合</td>
+      <td>${fmt(f.mu, 1)}</td><td>${fmt(f.sigma, 1)}</td><td>${fmt(f.tau, 1)}</td>
+      <td>全部试次</td>
+    </tr>`;
+  });
+  tb.innerHTML = html;
+  const bits = [];
+  if (R.tauT) bits.push(`τ 差异：M = ${fmt(R.tauT.mean, 1)} ms，t(${R.tauT.df}) = ${fmt(R.tauT.t, 2)}，p = ${fmtP(R.tauT.p)}，dz = ${fmt(R.tauT.dz, 2)}`);
+  if (R.muT) bits.push(`μ 差异：M = ${fmt(R.muT.mean, 1)} ms，t(${R.muT.df}) = ${fmt(R.muT.t, 2)}，p = ${fmtP(R.muT.p)}`);
+  $("exgNote").innerHTML = (bits.join("；") || "样本不足，无法检验。") +
+    "<br />拟合方式：先对每名被试的每个「角度 × 类型」单元格做中心化（减去单元格均值、加回该被试总均值），" +
+    "再合并同类型试次做最大似然估计（Nelder–Mead，3 组起点取最优），试次 &lt; 60 时跳过。" +
+    "这样 σ 与 τ 描述的是条件内部的反应时分布，而不是 0°–300° 的系统差异。" +
+    "<br />注意：每条件约 120 试次时 τ 会被系统性低估约 15–25%（小样本 MLE 偏差），因此<b>条件间差异比绝对值更可靠</b>；" +
+    "「合并拟合」行用该条件全部试次估计，数值更接近真值，但混入了被试间差异，仅供参照。";
+}
+
+function renderSubjects(R) {
+  $("tblSubjects").querySelector("tbody").innerHTML = R.perSubject.map((s) => `<tr>
+    <td>${s.sid}</td><td>${s.n}</td><td>${fmt(s.rt)}</td><td>${fmt(s.acc, 1)}%</td>
+    <td>${fmt(s.slope, 3)}</td><td>${fmt(s.speed)}</td><td>${fmt(s.mirrorCost, 1)}</td>
+    <td>${fmt(R.exgBySub.get(s.sid)?.normal?.tau, 1)}</td>
+    <td>${fmt(R.exgBySub.get(s.sid)?.mirror?.tau, 1)}</td>
+  </tr>`).join("");
+}
+
+function render(R) {
+  renderOverview(R);
+  renderRiskChart(R);
+  renderCells(R);
+  renderAnova(R);
+  renderSpeed(R);
+  renderTests(R);
+  renderModel(R);
+  renderExG(R);
+  renderSubjects(R);
+  $("report").hidden = false;
+}
+
+/* ---------------- 导出 ---------------- */
+function download(name, text, mime) {
+  const blob = new Blob([text], { type: mime + ";charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+const csvCell = (v) => (/[",\n]/.test(String(v ?? "")) ? `"${String(v).replace(/"/g, '""')}"` : String(v ?? ""));
+
+function groupCsv(R) {
+  const head = ["angle", "type", "n_subjects", "mean_rt", "se_rt", "accuracy"];
+  const lines = [head.join(",")];
+  ANG.forEach((a) => TYPES.forEach((t) => {
+    const c = R.cells[a][t];
+    lines.push([a, t, c.n, fmt(c.mean, 1), fmt(c.se, 1), fmt(c.acc * 100, 1)].join(","));
+  }));
+  return "\uFEFF" + lines.join("\n");
+}
+function subjectCsv(R) {
+  const head = ["subject_id", "valid_trials", "mean_rt", "accuracy", "slope_ms_per_deg", "speed_deg_per_s", "mirror_cost_ms"];
+  const lines = [head.join(",")];
+  R.perSubject.forEach((s) => lines.push([
+    csvCell(s.sid), s.n, fmt(s.rt, 1), fmt(s.acc, 1), fmt(s.slope, 4), fmt(s.speed, 1), fmt(s.mirrorCost, 1)
+  ].join(",")));
+  return "\uFEFF" + lines.join("\n");
+}
+
+function markdown(R) {
+  const st = R.stats;
+  const lines = [];
+  lines.push("# 心理旋转实验 · 数据分析摘要", "");
+  lines.push(`- 被试数：**${R.subjects.length}**`);
+  lines.push(`- 试次：总 ${st.total}，进入分析 ${st.kept}（有效率 ${fmt((st.kept / st.total) * 100, 1)}%）`);
+  lines.push(`- 清洗：仅正式阶段、正确反应、RT ∈ [${R.opt.minRT}, ${R.opt.maxRT}] ms${R.opt.trim3sd ? "、±3SD" : ""}`);
+  lines.push("", "## 条件均值（ms，括号内为 SE）", "");
+  lines.push("| 角度 | 正写 R | 反写 Я | 镜像成本 | 正确率 |");
+  lines.push("| --- | --- | --- | --- | --- |");
+  ANG.forEach((a) => {
+    const n = R.cells[a].normal, m = R.cells[a].mirror;
+    lines.push(`| ${a}° | ${fmt(n.mean)} (${fmt(n.se)}) | ${fmt(m.mean)} (${fmt(m.se)}) | ${fmt(m.mean - n.mean)} | ${fmt(mean([n.acc, m.acc]) * 100, 1)}% |`);
+  });
+  lines.push("", "## 重复测量 ANOVA", "");
+  if (R.anova) {
+    lines.push("| 效应 | F | df | p | 偏 η² |");
+    lines.push("| --- | --- | --- | --- | --- |");
+    R.anova.rows.forEach((r) => lines.push(`| ${r.name} | ${fmt(r.F, 2)} | ${r.df} | ${fmtP(r.p)} | ${fmt(r.eta, 2)} |`));
+  } else lines.push("数据不足。");
+  lines.push("", "## 旋转速度", "");
+  lines.push(`M = ${fmt(R.speed.mean)} °/s，SD = ${fmt(R.speed.sd)}，范围 ${fmt(R.speed.min)}–${fmt(R.speed.max)} °/s（n = ${R.speed.values.length}）。`);
+  lines.push("", "## 关键检验", "");
+  if (R.tests.length) {
+    lines.push("| 检验 | 差值 M | t | df | p | dz |");
+    lines.push("| --- | --- | --- | --- | --- | --- |");
+    R.tests.forEach((t) => lines.push(`| ${t.name} | ${fmt(t.mean, 1)} ms | ${fmt(t.t, 2)} | ${t.df} | ${fmtP(t.p)} | ${fmt(t.dz, 2)} |`));
+  } else lines.push("样本不足。");
+  lines.push("", "## 线性 vs 二次", "");
+  if (R.lin && R.quad) {
+    lines.push(`线性 R² = ${fmt(R.lin.r2, 3)}，斜率 = ${fmt(R.lin.coef[1], 3)} ms/°，AIC = ${fmt(R.lin.aic, 1)}；` +
+      `二次 R² = ${fmt(R.quad.r2, 3)}，AIC = ${fmt(R.quad.aic, 1)}，ΔAIC = ${fmt(R.quad.aic - R.lin.aic, 1)}。`);
+  }
+  lines.push("", "## ex-Gaussian", "");
+  TYPES.forEach((t) => {
+    const e = R.exg[t];
+    lines.push(`- ${TYPE_CN[t]}：μ = ${fmt(mean(e.mu), 1)}，σ = ${fmt(mean(e.sigma), 1)}，τ = ${fmt(mean(e.tau), 1)} ms（n = ${e.tau.length}）`);
+  });
+  if (R.tauT) lines.push(`- τ 配对检验：t(${R.tauT.df}) = ${fmt(R.tauT.t, 2)}，p = ${fmtP(R.tauT.p)}，dz = ${fmt(R.tauT.dz, 2)}`);
+  lines.push("", "---", "由 mental-rotation-experiment 分析模块生成；p 值未做多重比较校正。");
+  return lines.join("\n");
+}
+
+/* ---------------- 交互 ---------------- */
+function addSource(label, n) {
+  SOURCES.push({ label, n });
+  $("fileChips").innerHTML = SOURCES.map((s) => `<span class="chip">${s.label} <b>${s.n}</b> 行</span>`).join("");
+  $("clearBtn").hidden = false;
+}
+
+function showMsg(html, cls) {
+  $("uploadMsg").innerHTML = html ? `<div class="banner ${cls || ""}">${html}</div>` : "";
+}
+
+async function handleFiles(files) {
+  const all = [];
+  let failures = 0;
+  for (const f of files) {
+    try {
+      const text = await readFile(f);
+      let rows;
+      if (f.name.toLowerCase().endsWith(".json")) {
+        const obj = JSON.parse(text);
+        const recs = Array.isArray(obj) ? obj : (obj.trials || []);
+        rows = normalizeRecords(recs.map((r) => ({
+          subject_id: r.subject_id, angle: r.angle, char_type: r.char_type,
+          rt_ms: r.rt_ms ?? r.rt, correct: r.correct, phase: r.phase,
+          block: r.block, is_timeout: r.is_timeout
+        })), f.name.replace(/\.json$/i, ""));
+      } else {
+        rows = normalizeRecords(parseCsv(text), f.name.replace(/\.csv$/i, ""));
+      }
+      all.push(...rows);
+      addSource(f.name, rows.length);
+    } catch (e) {
+      failures++;
+    }
+  }
+  if (!all.length) {
+    showMsg("没有解析出可用数据。请确认文件包含 <code>angle / char_type / rt / correct</code> 等列。", "warn");
+    return;
+  }
+  showMsg("");
+  runAnalysis(all);
+}
+
+function runAnalysis(rows) {
+  RAW = rows;
+  RES = analyze(rows, currentOpts());
+  render(RES);
+  $("report").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function init() {
+  // 主题
+  const apply = (mode) => {
+    const dark = mode === "dark" || (mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}
+  };
+  let mode = "auto";
+  try { mode = localStorage.getItem(THEME_KEY) || "auto"; } catch (e) {}
+  apply(mode);
+  $("themeBtn").onclick = () => {
+    let cur = "auto";
+    try { cur = localStorage.getItem(THEME_KEY) || "auto"; } catch (e) {}
+    apply(cur === "auto" ? "light" : cur === "light" ? "dark" : "auto");
+  };
+
+  const input = $("fileInput");
+  $("pickBtn").onclick = () => input.click();
+  $("drop").onclick = () => input.click();
+  input.onchange = () => { if (input.files.length) handleFiles([...input.files]); };
+
+  ["dragenter", "dragover"].forEach((ev) => {
+    document.addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.add("over"); });
+  });
+  ["dragleave", "drop"].forEach((ev) => {
+    document.addEventListener(ev, (e) => { e.preventDefault(); $("drop").classList.remove("over"); });
+  });
+  document.addEventListener("drop", (e) => {
+    if (e.dataTransfer && e.dataTransfer.files.length) handleFiles([...e.dataTransfer.files]);
+  });
+
+  $("sampleBtn").onclick = () => {
+    SOURCES = [];
+    $("fileChips").innerHTML = "";
+    const rows = sampleRows();
+    addSource("示例数据（24 人 · 模拟）", rows.length);
+    showMsg("<b>当前为模拟数据</b>：按 Cooper &amp; Shepard 的典型结果生成（斜率 ≈ 2.7 ms/°、镜像成本 ≈ 100 ms、τ 长尾）。用于预览分析输出，不代表真实被试。", "");
+    runAnalysis(rows);
+  };
+
+  $("clearBtn").onclick = () => {
+    SOURCES = []; RES = null; RAW = [];
+    $("fileChips").innerHTML = ""; $("uploadMsg").innerHTML = "";
+    $("report").hidden = true; $("clearBtn").hidden = true;
+    input.value = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  ["optMin", "optMax", "optSd", "optMain"].forEach((id) => {
+    $(id).addEventListener("change", refreshAnalysis);
+    $(id).addEventListener("input", refreshAnalysis);
+  });
+
+  $("dlGroup").onclick = () => RES && download("group_summary.csv", groupCsv(RES), "text/csv");
+  $("dlSubjects").onclick = () => RES && download("subject_summary.csv", subjectCsv(RES), "text/csv");
+  $("dlReport").onclick = () => RES && download("analysis_report.md", markdown(RES), "text/markdown");
+  $("copyMd").onclick = async () => {
+    if (!RES) return;
+    try {
+      await navigator.clipboard.writeText(markdown(RES));
+      $("copyMd").textContent = "已复制 ✓";
+      setTimeout(() => ($("copyMd").textContent = "复制结果文本"), 1600);
+    } catch (e) {
+      download("analysis_report.md", markdown(RES), "text/markdown");
+    }
+  };
+}
+
+init();
+</script>
+</body>
+</html>
