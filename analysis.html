@@ -802,7 +802,7 @@ function analyze(rawRows, opt) {
     return {
       sid,
       n: all.length,
-      rt: mean(all),
+      rt: mean(all.map((r) => r.rt)),
       acc: accAll.length ? sum(accAll.map((r) => (r.correct && !r.timeout ? 1 : 0))) / accAll.length * 100 : NaN,
       slope,
       speed: slope > 0 ? 1000 / slope : NaN,
