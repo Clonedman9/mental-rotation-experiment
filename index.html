@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>心理旋转实验 · Cooper &amp; Shepard (1973) 复现</title>
+<meta name="description" content="字符心理旋转实验（正写/反写 R，0°–300°）。零依赖 Web 实验程序，含练习正确率标准、毫秒级计时、分组休息与反应时分析。" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f5bea'/%3E%3Ctext x='32' y='45' font-family='Helvetica,Arial' font-size='38' font-weight='bold' fill='%23fff' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E" />
+<style>
+  /* ============ 设计变量 ============ */
+  :root{
+    --bg:#f5f6f8;
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, #e8eefc 0%, rgba(232,238,252,0) 65%);
+    --panel:#ffffff;
+    --panel-2:#fbfcfd;
+    --ink:#0e1418;
+    --ink-2:#3b4754;
+    --muted:#697586;
+    --line:#e3e7ee;
+    --line-strong:#cfd6e0;
+    --accent:#2f5bea;
+    --accent-2:#1e46c9;
+    --accent-soft:#eaf0ff;
+    --ok:#0f8a56;
+    --ok-soft:#e6f6ee;
+    --bad:#cf3a3a;
+    --bad-soft:#fdecec;
+    --stim:#0e1418;
+    --shadow:0 1px 2px rgba(16,24,40,.04), 0 12px 32px -12px rgba(16,24,40,.18);
+    --radius:18px;
+    --font:"Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC",
+           "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  }
+  html[data-theme="dark"]{
+    --bg:#0d1014;
+    --bg-grad:radial-gradient(1200px 600px at 50% -10%, #1a2437 0%, rgba(26,36,55,0) 65%);
+    --panel:#141a21;
+    --panel-2:#11161c;
+    --ink:#eef2f6;
+    --ink-2:#c3ccd6;
+    --muted:#8b96a5;
+    --line:#232b34;
+    --line-strong:#323d49;
+    --accent:#6f92ff;
+    --accent-2:#8aa6ff;
+    --accent-soft:#1b2536;
+    --ok:#3ddc97;
+    --ok-soft:#12261d;
+    --bad:#ff7b7b;
+    --bad-soft:#2a1718;
+    --stim:#eef2f6;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -18px rgba(0,0,0,.8);
+  }
+
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:var(--font);
+    color:var(--ink);
+    background:var(--bg);
+    background-image:var(--bg-grad);
+    background-repeat:no-repeat;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    line-height:1.65;
+    overflow-x:hidden;
+  }
+  h1,h2,h3,p{margin:0;}
+  button{font-family:inherit;}
+
+  /* ============ 头部 ============ */
+  .topbar{
+    position:sticky; top:0; z-index:30;
+    display:flex; align-items:center; gap:12px;
+    padding:12px clamp(16px,4vw,32px);
+    background:color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter:saturate(1.6) blur(14px);
+    -webkit-backdrop-filter:saturate(1.6) blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex; align-items:center; gap:10px; min-width:0;}
+  .logo{
+    width:34px;height:34px;flex:none;border-radius:10px;
+    background:linear-gradient(145deg,var(--accent),var(--accent-2));
+    color:#fff; display:grid; place-items:center;
+    font-weight:800; font-size:17px; letter-spacing:-.5px;
+    box-shadow:0 6px 16px -8px var(--accent);
+  }
+  .brand-t{display:flex; flex-direction:column; min-width:0;}
+  .brand-t b{font-size:14.5px; font-weight:650; letter-spacing:.01em; white-space:nowrap;}
+  .brand-t span{font-size:11.5px; color:var(--muted); white-space:nowrap;}
+  .topbar-spacer{flex:1;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 11px; border-radius:999px;
+    border:1px solid var(--line); background:var(--panel);
+    font-size:12.5px; color:var(--ink-2); white-space:nowrap;
+  }
+  .chip b{font-weight:650; color:var(--ink);}
+  .icon-btn{
+    width:36px;height:36px; flex:none; border-radius:10px; cursor:pointer;
+    border:1px solid var(--line); background:var(--panel); color:var(--ink-2);
+    display:grid; place-items:center; font-size:15px;
+    transition:.16s ease;
+  }
+  .icon-btn:hover{border-color:var(--line-strong); color:var(--ink); transform:translateY(-1px);}
+
+  /* ============ 布局 ============ */
+  main{
+    width:100%; max-width:760px; margin:0 auto;
+    padding:clamp(20px,4vw,40px) clamp(16px,4vw,24px) 64px;
+  }
+  .screen{display:none; animation:rise .34s cubic-bezier(.22,.8,.3,1);}
+  .screen.active{display:block;}
+  @keyframes rise{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+
+  .card{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:clamp(22px,4vw,34px);
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:7px;
+    font-size:12px; font-weight:650; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--accent); background:var(--accent-soft);
+    padding:4px 10px; border-radius:999px; margin-bottom:16px;
+  }
+  h1.title{
+    font-size:clamp(27px,4.6vw,38px); line-height:1.2;
+    font-weight:760; letter-spacing:-.02em; margin-bottom:12px;
+  }
+  .lede{color:var(--muted); font-size:15px; max-width:56ch;}
+  .lede b{color:var(--ink-2); font-weight:600;}
+
+  .facts{display:flex; flex-wrap:wrap; gap:8px; margin:22px 0 26px;}
+  .fact{
+    display:flex; align-items:baseline; gap:7px;
+    border:1px solid var(--line); background:var(--panel-2);
+    border-radius:11px; padding:8px 12px; font-size:13px; color:var(--muted);
+  }
+  .fact b{color:var(--ink); font-weight:680; font-size:14px;}
+
+  /* ============ 表单 ============ */
+  .field{margin-bottom:18px;}
+  .field > label{
+    display:block; font-size:12.5px; font-weight:640; letter-spacing:.02em;
+    color:var(--ink-2); margin-bottom:7px;
+  }
+  input[type="text"], input[type="number"], select{
+    width:100%; font-family:inherit; font-size:14.5px; color:var(--ink);
+    background:var(--panel-2); border:1px solid var(--line-strong);
+    border-radius:11px; padding:11px 13px; outline:none;
+    transition:.15s ease; appearance:none;
+  }
+  input:focus, select:focus{
+    border-color:var(--accent); background:var(--panel);
+    box-shadow:0 0 0 3.5px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:560px){ .grid2{grid-template-columns:1fr;} }
+  .hint{font-size:12px; color:var(--muted); margin-top:6px;}
+
+  details.adv{
+    border:1px solid var(--line); border-radius:13px;
+    background:var(--panel-2); padding:0; margin:4px 0 22px;
+  }
+  details.adv > summary{
+    cursor:pointer; padding:12px 14px; font-size:13px; font-weight:620;
+    color:var(--ink-2); list-style:none; display:flex; align-items:center; gap:8px;
+  }
+  details.adv > summary::-webkit-details-marker{display:none;}
+  details.adv > summary::before{
+    content:"›"; display:inline-block; transition:transform .2s; font-size:16px; color:var(--muted);
+  }
+  details.adv[open] > summary::before{transform:rotate(90deg);}
+  details.adv .adv-body{padding:2px 14px 16px; border-top:1px solid var(--line); padding-top:16px;}
+
+  /* ============ 按钮 ============ */
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:9px;
+    font-size:15px; font-weight:640; letter-spacing:.01em;
+    padding:13px 24px; border-radius:12px; cursor:pointer;
+    border:1px solid transparent; transition:.16s cubic-bezier(.2,.7,.3,1);
+    text-decoration:none; white-space:nowrap;
+  }
+  .btn:active{transform:translateY(1px) scale(.995);}
+  .btn-primary{
+    background:linear-gradient(180deg,var(--accent),var(--accent-2));
+    color:#fff; box-shadow:0 10px 22px -12px var(--accent);
+  }
+  .btn-primary:hover{filter:brightness(1.06); box-shadow:0 14px 28px -12px var(--accent);}
+  .btn-ghost{background:var(--panel); border-color:var(--line-strong); color:var(--ink-2);}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent);}
+  .btn-quiet{background:transparent; color:var(--muted); padding:9px 12px; font-size:13px;}
+  .btn-quiet:hover{color:var(--ink); background:var(--panel-2);}
+  .btn[disabled]{opacity:.5; cursor:not-allowed; box-shadow:none; filter:none; transform:none;}
+  .btn-block{width:100%;}
+  .actions{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+
+  /* ============ 指导语 ============ */
+  .rule{
+    display:flex; gap:13px; align-items:flex-start;
+    padding:14px 0; border-bottom:1px dashed var(--line);
+  }
+  .rule:last-child{border-bottom:0;}
+  .rule-i{
+    flex:none; width:26px; height:26px; border-radius:8px; display:grid; place-items:center;
+    background:var(--accent-soft); color:var(--accent); font-size:13px; font-weight:700;
+  }
+  .rule-t{font-size:14.3px; color:var(--ink-2);}
+  .rule-t b{color:var(--ink); font-weight:640;}
+  kbd{
+    display:inline-block; min-width:24px; text-align:center;
+    padding:2px 7px; margin:0 2px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; font-weight:600;
+    color:var(--ink); background:var(--panel-2);
+    border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:6px;
+  }
+  .example{
+    display:flex; gap:26px; justify-content:center; align-items:center;
+    margin:20px 0 4px; padding:18px; border-radius:13px;
+    background:var(--panel-2); border:1px solid var(--line);
+  }
+  .example figure{margin:0; text-align:center;}
+  .example svg{width:58px; height:58px; display:block; fill:var(--stim);}
+  .example figcaption{font-size:11.5px; color:var(--muted); margin-top:8px;}
+
+  /* ============ 运行界面 ============ */
+  .hud{display:flex; align-items:center; gap:13px; margin-bottom:14px;}
+  .hud-meta{font-size:12.5px; color:var(--muted); white-space:nowrap;}
+  .hud-meta b{color:var(--ink); font-weight:640;}
+  .bar{flex:1; height:6px; border-radius:99px; background:var(--line); overflow:hidden;}
+  .bar > i{
+    display:block; height:100%; width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    border-radius:99px; transition:width .28s ease;
+  }
+  .stage{
+    position:relative; display:grid; place-items:center;
+    height:clamp(280px,44vh,380px);
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); box-shadow:var(--shadow);
+    overflow:hidden; user-select:none;
+  }
+  .stage::after{ /* 中央注视区标记，帮助保持眼位 */
+    content:""; position:absolute; width:1px; height:1px; background:transparent;
+  }
+  .fixation{
+    font-size:30px; font-weight:300; color:var(--muted);
+    opacity:0; transition:opacity .08s linear;
+  }
+  .fixation.on{opacity:1;}
+  #stim{fill:var(--stim); opacity:0;}
+  #stim.on{opacity:1;}
+  .feedback{
+    position:absolute; inset:0; display:grid; place-items:center;
+    font-size:23px; font-weight:680; letter-spacing:.02em;
+    opacity:0; transition:opacity .1s linear;
+  }
+  .feedback.on{opacity:1;}
+  .feedback.ok{color:var(--ok);}
+  .feedback.bad{color:var(--bad);}
+  .touchpad{display:none; gap:12px; margin-top:16px;}
+  .touchpad .btn{flex:1; padding:16px; font-size:15px;}
+  body.touch .touchpad{display:flex;}
+  .stage-note{
+    text-align:center; font-size:12.5px; color:var(--muted); margin-top:14px;
+  }
+
+  /* ============ 休息 / 练习结果 ============ */
+  .center-card{text-align:center;}
+  .big-num{
+    font-size:clamp(56px,12vw,86px); font-weight:760; letter-spacing:-.04em;
+    line-height:1; margin:18px 0 6px; font-variant-numeric:tabular-nums;
+  }
+  .meter{
+    height:8px; border-radius:99px; background:var(--line); overflow:hidden;
+    max-width:340px; margin:22px auto 8px;
+  }
+  .meter > i{display:block; height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2)); transition:width .3s linear;}
+  .meter.ok > i{background:linear-gradient(90deg,#22c07f,var(--ok));}
+
+  /* ============ 结果 ============ */
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:24px 0 8px;}
+  @media (max-width:640px){ .stats{grid-template-columns:repeat(2,1fr);} }
+  .stat{
+    background:var(--panel-2); border:1px solid var(--line); border-radius:13px;
+    padding:14px 15px;
+  }
+  .stat span{display:block; font-size:11.5px; color:var(--muted); letter-spacing:.03em; margin-bottom:5px;}
+  .stat b{font-size:23px; font-weight:720; letter-spacing:-.02em; font-variant-numeric:tabular-nums;}
+  .stat b em{font-style:normal; font-size:12px; font-weight:600; color:var(--muted); margin-left:2px;}
+
+  .sect{margin-top:34px;}
+  .sect-h{display:flex; align-items:baseline; gap:10px; margin-bottom:12px;}
+  .sect-h h2{font-size:15.5px; font-weight:680; letter-spacing:-.01em;}
+  .sect-h p{font-size:12.5px; color:var(--muted);}
+
+  table{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums;}
+  th,td{padding:9px 10px; text-align:right; border-bottom:1px solid var(--line);}
+  th:first-child, td:first-child{text-align:left;}
+  thead th{
+    font-size:11.5px; font-weight:640; color:var(--muted); letter-spacing:.03em;
+    border-bottom:1px solid var(--line-strong); white-space:nowrap;
+  }
+  tbody tr:hover{background:var(--panel-2);}
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:13px; background:var(--panel-2);}
+  .tbl-wrap table{min-width:440px;}
+  .tbl-wrap th:first-child, .tbl-wrap td:first-child{padding-left:14px;}
+  .tbl-wrap th:last-child, .tbl-wrap td:last-child{padding-right:14px;}
+
+  .chart{width:100%; height:auto; display:block;}
+  .notes{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.7;}
+  .notes code{font-size:12px; background:var(--panel-2); padding:1px 5px; border-radius:5px;}
+
+  .banner{
+    display:flex; gap:12px; align-items:flex-start;
+    padding:14px 16px; border-radius:13px; margin:18px 0 0;
+    background:var(--accent-soft); color:var(--ink-2); font-size:13px;
+    border:1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .banner.ok{background:var(--ok-soft); border-color:color-mix(in srgb,var(--ok) 24%,transparent);}
+  .banner.bad{background:var(--bad-soft); border-color:color-mix(in srgb,var(--bad) 24%,transparent);}
+  .banner b{color:var(--ink);}
+
+  .foot{
+    text-align:center; font-size:11.5px; color:var(--muted);
+    padding:28px 16px 40px; line-height:1.9;
+  }
+  .foot a{color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--line-strong);}
+  .foot a:hover{color:var(--accent); border-color:var(--accent);}
+
+  .sr{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;}
+  :focus-visible{outline:2.5px solid var(--accent); outline-offset:2px; border-radius:8px;}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.001ms !important; transition-duration:.001ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo" aria-hidden="true">R</div>
+    <div class="brand-t">
+      <b>心理旋转实验</b>
+      <span>Cooper &amp; Shepard (1973) 复现</span>
+    </div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="chip" id="subjectChip" hidden>被试 <b id="subjectChipVal">—</b></div>
+  <button class="icon-btn" id="fsBtn" title="全屏 / 退出全屏" aria-label="切换全屏">⛶</button>
+  <button class="icon-btn" id="themeBtn" title="切换配色" aria-label="切换浅色 / 深色">◐</button>
+</header>
+
+<main>
+
+  <!-- ==================== 1. 欢迎 / 设置 ==================== -->
+  <section class="screen active" id="screen-welcome">
+    <div class="card">
+      <span class="eyebrow">认知心理学 · 表象与心理旋转</span>
+      <h1 class="title">看到一只倾斜的 R，<br>判断它是正写还是反写？</h1>
+      <p class="lede">
+        经典 <b>字符心理旋转</b> 任务。你会看到随机旋转 0°–300° 的大写 R（正写）或其水平镜像（反写 Я），
+        请在保持准确的前提下尽快按键判断。全程约 <b>10 分钟</b>，数据仅保存在你的浏览器中。
+      </p>
+
+      <div class="facts">
+        <div class="fact"><b>2</b> × <b>6</b> 条件</div>
+        <div class="fact"><b id="factTrials">240</b> 正式试次</div>
+        <div class="fact"><b>0.06</b> 视角</div>
+        <div class="fact">组间休息 <b>2</b> 分钟</div>
+      </div>
+
+      <div class="field" style="max-width:320px;">
+        <label for="subjectId">被试编号</label>
+        <input type="text" id="subjectId" value="S001" maxlength="24" autocomplete="off" spellcheck="false" placeholder="例如 S001" />
+        <div class="hint">用于命名导出的数据文件，可匿名填写。</div>
+      </div>
+
+      <details class="adv">
+        <summary>高级设置（实验参数）</summary>
+        <div class="adv-body">
+          <div class="grid2">
+            <div class="field">
+              <label for="cfgPer">每条件试次 / 组</label>
+              <input type="number" id="cfgPer" value="10" min="1" max="60" step="1" />
+              <div class="hint">12 条件 × 10 = 120 试次 / 组</div>
+            </div>
+            <div class="field">
+              <label for="cfgBlocks">正式组数（block）</label>
+              <input type="number" id="cfgBlocks" value="2" min="1" max="6" step="1" />
+            </div>
+            <div class="field">
+              <label for="cfgPractice">练习每条件试次</label>
+              <input type="number" id="cfgPractice" value="2" min="1" max="20" step="1" />
+              <div class="hint">练习正确率需 ≥ 80% 才进入正式实验</div>
+            </div>
+            <div class="field">
+              <label for="cfgStim">刺激大小（像素高）</label>
+              <input type="number" id="cfgStim" value="110" min="40" max="260" step="10" />
+            </div>
+            <div class="field">
+              <label for="cfgFix">注视点时长（ms）</label>
+              <input type="number" id="cfgFix" value="500" min="100" max="2000" step="50" />
+            </div>
+            <div class="field">
+              <label for="cfgTimeout">反应时限（ms）</label>
+              <input type="number" id="cfgTimeout" value="4000" min="800" max="15000" step="100" />
+            </div>
+            <div class="field">
+              <label for="cfgBreak">组间休息（秒）</label>
+              <input type="number" id="cfgBreak" value="120" min="0" max="600" step="10" />
+            </div>
+            <div class="field">
+              <label for="cfgFeedback">练习阶段反馈</label>
+              <select id="cfgFeedback">
+                <option value="1" selected>显示对错反馈</option>
+                <option value="0">不显示反馈</option>
+              </select>
+            </div>
+          </div>
+          <div class="hint">修改后仅在本次会话生效；可用 URL 参数预填，例如 <code>?id=S007&amp;per=5&amp;blocks=1</code>。</div>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="toInstructions">开始实验</button>
+        <button class="btn btn-ghost" id="resumeBtn" hidden>继续未完成的实验</button>
+      </div>
+
+      <div id="resumeBanner" class="banner" hidden></div>
+    </div>
+
+    <div class="foot">
+      教学用实验程序 · 不收集、不上传任何数据，全部记录保存在本地浏览器<br />
+      实验逻辑参考 <a href="https://github.com/Yideal/mental-rotation-experiment" target="_blank" rel="noopener">Yideal/mental-rotation-experiment</a>，
+      本页为独立重写版本
+    </div>
+  </section>
+
+  <!-- ==================== 2. 指导语 ==================== -->
+  <section class="screen" id="screen-instructions">
+    <div class="card">
+      <span class="eyebrow">指导语</span>
+      <h1 class="title" style="font-size:clamp(24px,3.6vw,30px);">请认真阅读，然后开始练习</h1>
+
+      <div class="example" aria-hidden="true">
+        <figure>
+          <svg viewBox="-100 -100 200 200"><path d="M-8.51 -5.66Q-0.4 -5.66 3.11 -8.67Q6.63 -11.69 6.63 -18.59Q6.63 -25.42 3.11 -28.37Q-0.4 -31.31 -8.51 -31.31H-19.36V-5.66ZM-19.36 12.16V50H-45.14V-50H-5.76Q14 -50 23.21 -43.37Q32.42 -36.74 32.42 -22.4Q32.42 -12.49 27.63 -6.13Q22.84 0.23 13.19 3.25Q18.49 4.45 22.67 8.71Q26.86 12.96 31.15 21.6L45.14 50H17.68L5.49 25.15Q1.81 17.65 -1.98 14.9Q-5.76 12.16 -12.06 12.16Z"/></svg>
+          <figcaption>正写 R</figcaption>
+        </figure>
+        <figure>
+          <svg viewBox="-100 -100 200 200"><g transform="scale(-1,1)"><path d="M-8.51 -5.66Q-0.4 -5.66 3.11 -8.67Q6.63 -11.69 6.63 -18.59Q6.63 -25.42 3.11 -28.37Q-0.4 -31.31 -8.51 -31.31H-19.36V-5.66ZM-19.36 12.16V50H-45.14V-50H-5.76Q14 -50 23.21 -43.37Q32.42 -36.74 32.42 -22.4Q32.42 -12.49 27.63 -6.13Q22.84 0.23 13.19 3.25Q18.49 4.45 22.67 8.71Q26.86 12.96 31.15 21.6L45.14 50H17.68L5.49 25.15Q1.81 17.65 -1.98 14.9Q-5.76 12.16 -12.06 12.16Z"/></g></svg>
+          <figcaption>反写 R（镜像）</figcaption>
+        </figure>
+      </div>
+
+      <div style="margin-top:22px;">
+        <div class="rule">
+          <div class="rule-i">1</div>
+          <div class="rule-t"><b>忽略倾斜角度。</b>不管 R 转到了哪个方向，只判断它是正写还是反写。</div>
+        </div>
+        <div class="rule">
+          <div class="rule-i">2</div>
+          <div class="rule-t">正写 R 按 <kbd>F</kbd>，反写 R（镜像）按 <kbd>J</kbd>。左手食指与右手食指分别放在这两个键上。</div>
+        </div>
+        <div class="rule">
+          <div class="rule-i">3</div>
+          <div class="rule-t"><b>先准确，再求快。</b>每个试次只有一次作答机会，按下即记录，不能修改。</div>
+        </div>
+        <div class="rule">
+          <div class="rule-i">4</div>
+          <div class="rule-t">先进行 <b id="instrPractice">24</b> 个练习试次（有反馈，正确率需 ≥ 80%）。随后是 <b id="instrMain">2</b> 组正式试次，组间休息 <b id="instrBreak">2</b> 分钟。</div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:26px;">
+        <button class="btn btn-primary" id="startPractice">开始练习</button>
+        <button class="btn btn-quiet" id="backHome">返回</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 3. 实验运行 ==================== -->
+  <section class="screen" id="screen-run">
+    <div class="hud">
+      <div class="hud-meta" id="hudBlock">练习</div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressBar">
+        <i id="progressFill"></i>
+      </div>
+      <div class="hud-meta" id="hudCount">1 / 24</div>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="fixation" id="fixation">+</div>
+      <svg id="stimSvg" viewBox="-100 -100 200 200" width="220" height="220" aria-hidden="true" hidden>
+        <g id="stimGroup">
+          <path id="stim" d=""></path>
+        </g>
+      </svg>
+      <div class="feedback" id="feedback" aria-live="polite"></div>
+    </div>
+
+    <div class="touchpad">
+      <button class="btn btn-ghost" data-resp="f">正写 R<kbd>F</kbd></button>
+      <button class="btn btn-ghost" data-resp="j">反写 Я<kbd>J</kbd></button>
+    </div>
+
+    <p class="stage-note" id="runNote">请将注意力集中在屏幕中央</p>
+  </section>
+
+  <!-- ==================== 4. 休息 / 练习结果 ==================== -->
+  <section class="screen" id="screen-break">
+    <div class="card center-card">
+      <span class="eyebrow" id="breakTag">休息</span>
+      <h1 class="title" id="breakTitle">已完成一半</h1>
+      <p class="lede" id="breakDesc" style="margin:0 auto;">请放松眼睛，保持同样的坐姿与距离。</p>
+      <div class="big-num" id="breakNum">120</div>
+      <div class="meter" id="breakMeter"><i style="width:0%"></i></div>
+      <div class="hint" id="breakHint">剩余休息时间（秒）</div>
+      <div class="actions" style="justify-content:center; margin-top:24px;">
+        <button class="btn btn-primary" id="continueBtn" disabled>继续（等待中）</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 5. 结果 ==================== -->
+  <section class="screen" id="screen-results">
+    <div class="card">
+      <span class="eyebrow">实验完成</span>
+      <h1 class="title" style="font-size:clamp(24px,3.8vw,32px);">谢谢你，<span id="resSubject">S001</span>。</h1>
+      <p class="lede">下面是本次会话的即时结果。旋转速度由 0°–180° 的反应时斜率估计；单被试数据仅供参照，不做显著性推断。</p>
+
+      <div class="stats">
+        <div class="stat"><span>有效试次</span><b id="stValid">—</b></div>
+        <div class="stat"><span>平均反应时</span><b id="stRT">—<em>ms</em></b></div>
+        <div class="stat"><span>总正确率</span><b id="stAcc">—<em>%</em></b></div>
+        <div class="stat"><span>旋转速度</span><b id="stSpeed">—<em>°/s</em></b></div>
+      </div>
+
+      <div class="sect">
+        <div class="sect-h"><h2>反应时 × 旋转角度</h2><p>虚线为 0°–180° 线性拟合</p></div>
+        <svg class="chart" id="chart" viewBox="0 0 640 300" role="img" aria-label="反应时随旋转角度变化的折线图"></svg>
+      </div>
+
+      <div class="sect">
+        <div class="sect-h"><h2>各条件描述统计</h2><p>单位：ms / %</p></div>
+        <div class="tbl-wrap">
+          <table id="resTable">
+            <thead>
+              <tr><th>角度</th><th>正写 R</th><th>反写 Я</th><th>镜像成本</th><th>正确率</th><th>n</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="sect">
+        <div class="sect-h"><h2>关键指标</h2></div>
+        <div class="tbl-wrap">
+          <table id="keyTable">
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="notes" id="keyNotes"></p>
+      </div>
+
+      <div class="actions" style="margin-top:30px;">
+        <button class="btn btn-primary" id="dlCsv">下载 CSV 数据</button>
+        <button class="btn btn-ghost" id="dlJson">下载 JSON</button>
+        <button class="btn btn-ghost" id="copySum">复制结果摘要</button>
+        <button class="btn btn-quiet" id="restart">重新开始</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* =========================================================================
+   心理旋转实验 · 重构版
+   -------------------------------------------------------------------------
+   设计要点：
+   1. 零外部依赖（不加载 D3.js），单文件、可离线运行、可托管于 GitHub Pages。
+   2. 刺激为正写 R 的矢量轮廓（DejaVu Sans Bold 字形，Bitstream Vera 许可），
+      与设备字体无关；几何中心即旋转原点。
+   3. 镜像变换先做水平翻转再做旋转：transform="rotate(θ) scale(-1,1)"，
+      保证镜像轴固定在字符自身坐标系内（原版顺序相反，导致镜像试次等效反向旋转）。
+   4. 计时以刺激实际呈现（双 rAF 后）为零点；注视点与试次间隔期间锁定按键，
+      避免抢答、重复记录与注视点时间被计入 RT。
+   5. 练习正确率 ≥ 80% 才进入正式实验（未达标可重练），正式实验按组（block）
+      呈现，组间休息可跳过。
+   6. 每个试次结束即写入 localStorage，中途刷新可恢复；导出 CSV / JSON。
+   ========================================================================= */
+
+/* ---------- 常量 ---------- */
+const LETTER_PATH = "M-8.51 -5.66Q-0.4 -5.66 3.11 -8.67Q6.63 -11.69 6.63 -18.59Q6.63 -25.42 3.11 -28.37Q-0.4 -31.31 -8.51 -31.31H-19.36V-5.66ZM-19.36 12.16V50H-45.14V-50H-5.76Q14 -50 23.21 -43.37Q32.42 -36.74 32.42 -22.4Q32.42 -12.49 27.63 -6.13Q22.84 0.23 13.19 3.25Q18.49 4.45 22.67 8.71Q26.86 12.96 31.15 21.6L45.14 50H17.68L5.49 25.15Q1.81 17.65 -1.98 14.9Q-5.76 12.16 -12.06 12.16Z";
+const ANGLES = [0, 60, 120, 180, 240, 300];
+const TYPES = ["normal", "mirror"];
+const STORE_KEY = "mre.session.v1";
+const THEME_KEY = "mre.theme.v1";
+
+const DEFAULTS = {
+  perCond: 10,       // 每条件每组的试次数 → 12 × 10 = 120 / 组
+  blocks: 2,
+  practicePerCond: 2,
+  stim: 110,         // 字形高度（CSS px）
+  fixation: 500,
+  timeout: 4000,
+  iti: 600,
+  fbOk: 450,
+  fbBad: 950,
+  breakSec: 120,
+  criterion: 80,
+  practiceFeedback: true
+};
+
+/* ---------- 工具 ---------- */
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const mean = (a) => (a.length ? a.reduce((s, v) => s + v, 0) / a.length : NaN);
+const sd = (a) => {
+  if (a.length < 2) return NaN;
+  const m = mean(a);
+  return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / (a.length - 1));
+};
+const fmt = (v, d = 0) => (Number.isFinite(v) ? v.toFixed(d) : "—");
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function parseParams() {
+  const q = new URLSearchParams(location.search);
+  const num = (k) => {
+    const v = q.get(k);
+    if (v === null) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  return {
+    subject: q.get("id") || q.get("subject") || null,
+    perCond: num("per"),
+    blocks: num("blocks"),
+    practicePerCond: num("practice"),
+    stim: num("stim"),
+    fixation: num("fix"),
+    timeout: num("timeout"),
+    breakSec: num("break"),
+    criterion: num("criterion")
+  };
+}
+
+/* ---------- 主题 ---------- */
+function applyTheme(mode) {
+  const mql = window.matchMedia("(prefers-color-scheme: dark)");
+  const dark = mode === "dark" || (mode === "auto" && mql.matches);
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  try { localStorage.setItem(THEME_KEY, mode); } catch (e) {}
+  $("themeBtn").title = "配色：" + ({ auto: "跟随系统", light: "浅色", dark: "深色" })[mode];
+}
+function initTheme() {
+  let mode = "auto";
+  try { mode = localStorage.getItem(THEME_KEY) || "auto"; } catch (e) {}
+  applyTheme(mode);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    let m = "auto";
+    try { m = localStorage.getItem(THEME_KEY) || "auto"; } catch (e) {}
+    if (m === "auto") applyTheme("auto");
+  });
+}
+
+/* ---------- 屏幕切换 ---------- */
+const SCREENS = ["welcome", "instructions", "run", "break", "results"];
+function show(name) {
+  SCREENS.forEach((s) => $("screen-" + s).classList.toggle("active", s === name));
+  window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+}
+
+/* ---------- 全局状态 ---------- */
+let S = null;        // 当前会话
+let ticker = null;   // 休息倒计时句柄
+let token = 0;       // 试次令牌，防止过期回调污染新试次
+const TIMERS = new Set();
+
+function later(fn, ms) {
+  const id = setTimeout(() => { TIMERS.delete(id); fn(); }, ms);
+  TIMERS.add(id);
+  return id;
+}
+function clearTimers() {
+  TIMERS.forEach((id) => clearTimeout(id));
+  TIMERS.clear();
+  if (ticker) { clearInterval(ticker); ticker = null; }
+}
+
+/* ---------- 会话构造 ---------- */
+function buildTrials(perCond) {
+  const out = [];
+  for (const angle of ANGLES) {
+    for (const type of TYPES) {
+      for (let i = 0; i < perCond; i++) out.push({ angle, type });
+    }
+  }
+  return shuffle(out);
+}
+
+function newSession(cfg, subject) {
+  return {
+    v: 1,
+    sessionId: "s" + Date.now().toString(36).toUpperCase(),
+    subject,
+    cfg,
+    phase: "practice",   // practice | main
+    round: 1,            // 练习轮次
+    block: 1,            // 正式组序号（1-based）
+    index: 0,            // 当前 block 内已完成的下标（即将呈现的试次）
+    trials: [],
+    data: [],
+    startedAt: new Date().toISOString(),
+    endedAt: null
+  };
+}
+
+/* ---------- 持久化 ---------- */
+function persist() {
+  if (!S) return;
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      v: 1, subject: S.subject, cfg: S.cfg, phase: S.phase, round: S.round,
+      block: S.block, index: S.index, trials: S.trials, data: S.data,
+      sessionId: S.sessionId, startedAt: S.startedAt, endedAt: S.endedAt
+    }));
+  } catch (e) { /* 隐私模式等场景忽略 */ }
+}
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    return s && s.data && s.data.length ? s : null;
+  } catch (e) { return null; }
+}
+function clearSaved() {
+  try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+}
+
+/* ---------- 欢迎页 ---------- */
+function readConfig() {
+  const cfg = { ...DEFAULTS };
+  cfg.perCond = clamp(parseInt($("cfgPer").value, 10) || DEFAULTS.perCond, 1, 60);
+  cfg.blocks = clamp(parseInt($("cfgBlocks").value, 10) || DEFAULTS.blocks, 1, 6);
+  cfg.practicePerCond = clamp(parseInt($("cfgPractice").value, 10) || DEFAULTS.practicePerCond, 1, 20);
+  cfg.stim = clamp(parseInt($("cfgStim").value, 10) || DEFAULTS.stim, 40, 260);
+  cfg.fixation = clamp(parseInt($("cfgFix").value, 10) || DEFAULTS.fixation, 100, 2000);
+  cfg.timeout = clamp(parseInt($("cfgTimeout").value, 10) || DEFAULTS.timeout, 800, 15000);
+  cfg.breakSec = clamp(parseInt($("cfgBreak").value, 10) || 0, 0, 600);
+  if ($("cfgBreak").value === "0") cfg.breakSec = 0;
+  cfg.practiceFeedback = $("cfgFeedback").value === "1";
+  return cfg;
+}
+
+function syncWelcomeFacts() {
+  const cfg = readConfig();
+  $("factTrials").textContent = String(cfg.perCond * 12 * cfg.blocks);
+  if (document.getElementById("screen-instructions").classList.contains("active")) {
+    $("instrPractice").textContent = String(cfg.practicePerCond * 12);
+    $("instrMain").textContent = String(cfg.blocks);
+    $("instrBreak").textContent = String(Math.round(cfg.breakSec / 60));
+  }
+}
+
+/* ---------- 渲染刺激 ---------- */
+function renderStimulus(trial) {
+  const px = S.cfg.stim;
+  const svg = $("stimSvg");
+  svg.setAttribute("width", px * 2);
+  svg.setAttribute("height", px * 2);
+  svg.style.width = px * 2 + "px";
+  svg.style.height = px * 2 + "px";
+  const mirror = trial.type === "mirror" ? "scale(-1,1) " : "";
+  // 顺序：先镜像（局部坐标），再整体旋转
+  $("stimGroup").setAttribute("transform", "rotate(" + trial.angle + ") " + mirror);
+  $("stim").setAttribute("d", LETTER_PATH);
+}
+
+/* ---------- 运行流程 ---------- */
+function startPracticeBlock(round) {
+  clearTimers();
+  S.phase = "practice";
+  S.round = round || 1;
+  S.block = 1;
+  S.index = 0;
+  S.trials = buildTrials(S.cfg.practicePerCond);
+  show("run");
+  $("runNote").textContent = "练习阶段 · 有反馈";
+  persist();
+  runTrial();
+}
+
+function startMainBlock(block) {
+  clearTimers();
+  S.phase = "main";
+  S.block = block;
+  S.index = 0;
+  S.trials = buildTrials(S.cfg.perCond);
+  show("run");
+  $("runNote").textContent = "正式实验 · 无反馈，请保持注视中央";
+  persist();
+  runTrial();
+}
+
+function setStage(which) {
+  const fixation = $("fixation");
+  const svg = $("stimSvg");
+  const fb = $("feedback");
+  fixation.classList.toggle("on", which === "fixation");
+  const isStim = which === "stimulus";
+  svg.hidden = !isStim;
+  $("stim").classList.toggle("on", isStim);
+  if (!isStim) fb.classList.remove("on");
+}
+
+function updateHud() {
+  const total = S.trials.length;
+  const done = S.index;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  $("progressFill").style.width = pct + "%";
+  $("progressBar").setAttribute("aria-valuenow", String(pct));
+  $("hudCount").textContent = done + 1 > total ? total + " / " + total : (done + 1) + " / " + total;
+  $("hudBlock").innerHTML = S.phase === "practice"
+    ? "练习 <b>第 " + S.round + " 轮</b>"
+    : "正式 <b>第 " + S.block + " / " + S.cfg.blocks + " 组</b>";
+}
+
+function runTrial() {
+  if (!S) return;
+  if (S.index >= S.trials.length) { endBlock(); return; }
+  token += 1;
+  const my = token;
+  S.current = S.trials[S.index];
+  S.locked = true;
+  S.t0 = 0;
+  updateHud();
+  setStage("fixation");
+  later(() => { if (my === token) showStimulus(my); }, S.cfg.fixation);
+}
+
+function showStimulus(my) {
+  if (!S || my !== token) return;
+  renderStimulus(S.current);
+  setStage("stimulus");
+  // 等两帧，确保刺激已完成绘制后再取计时零点（RT 不含注视点时间）
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (!S || my !== token || !S.locked) return;
+    S.t0 = performance.now();
+    S.locked = false;
+    later(() => { if (my === token && S) respond(null, true); }, S.cfg.timeout);
+  }));
+  // 看门狗：标签页切到后台时 rAF 不触发，仍需让流程继续
+  later(() => {
+    if (my !== token || !S || !S.locked) return;
+    S.t0 = performance.now();
+    S.locked = false;
+    respond(null, true);
+  }, S.cfg.fixation + S.cfg.timeout + 1200);
+}
+
+function respond(key, isTimeout) {
+  if (!S || S.locked) return;
+  S.locked = true;
+  clearTimers();
+
+  const trial = S.current;
+  const rt = isTimeout ? S.cfg.timeout : Math.max(0, Math.round(performance.now() - S.t0));
+  const expected = trial.type === "normal" ? "f" : "j";
+  const correct = !isTimeout && key === expected ? 1 : 0;
+
+  S.data.push({
+    subject_id: S.subject,
+    session_id: S.sessionId,
+    phase: S.phase,
+    practice_round: S.phase === "practice" ? S.round : "",
+    block: S.phase === "main" ? S.block : "",
+    trial_in_block: S.index + 1,
+    global_index: S.data.length + 1,
+    angle: trial.angle,
+    char_type: trial.type,
+    expected_key: expected,
+    response_key: isTimeout ? "" : key,
+    rt_ms: rt,
+    correct,
+    is_timeout: isTimeout ? 1 : 0,
+    is_outlier: rt < 200 || rt > 3000 ? 1 : 0,
+    stim_px: S.cfg.stim,
+    timestamp: new Date().toISOString()
+  });
+
+  setStage("blank");
+  $("stim").classList.remove("on");
+  $("stimSvg").hidden = true;
+
+  if (S.phase === "practice" && S.cfg.practiceFeedback) {
+    const fb = $("feedback");
+    fb.textContent = isTimeout ? "超时" : (correct ? "✓ 正确" : "✗ 错误");
+    fb.className = "feedback on " + (correct ? "ok" : "bad");
+    later(next, correct ? S.cfg.fbOk : S.cfg.fbBad);
+  } else if (S.phase === "practice") {
+    later(next, 250);
+  } else {
+    later(next, S.cfg.iti);
+  }
+  persist();
+}
+
+function next() {
+  if (!S) return;
+  S.index += 1;
+  persist();
+  runTrial();
+}
+
+/* ---------- 结束一个 block ---------- */
+function endBlock() {
+  clearTimers();
+  S.locked = true;
+
+  if (S.phase === "practice") {
+    const rows = S.data.filter((d) => d.phase === "practice" && d.practice_round === S.round);
+    const acc = rows.length ? (rows.filter((d) => d.correct === 1).length / rows.length) * 100 : 0;
+    if (acc < S.cfg.criterion) {
+      showPracticeFail(acc);
+    } else {
+      showBreak({
+        tag: "练习完成",
+        title: "练习正确率 " + Math.round(acc) + "%",
+        desc: "达到标准（≥ " + S.cfg.criterion + "%）。接下来进入正式实验：" +
+              (S.cfg.blocks * S.cfg.perCond * 12) + " 个试次，共 " + S.cfg.blocks + " 组，无反馈。",
+        seconds: 5,
+        continueText: "进入正式实验",
+        onDone: () => startMainBlock(1)
+      });
+    }
+    return;
+  }
+
+  if (S.block < S.cfg.blocks) {
+    showBreak({
+      tag: "组间休息",
+      title: "第 " + S.block + " 组完成",
+      desc: "还可以休息 " + S.cfg.breakSec + " 秒。请保持坐姿与屏幕距离，准备好后随时继续。",
+      seconds: S.cfg.breakSec,
+      continueText: "继续第 " + (S.block + 1) + " 组",
+      onDone: () => startMainBlock(S.block + 1)
+    });
+  } else {
+    finishExperiment();
+  }
+}
+
+function showPracticeFail(acc) {
+  clearTimers();
+  $("breakTag").textContent = "练习未达标";
+  $("breakTitle").textContent = "正确率 " + Math.round(acc) + "%";
+  $("breakDesc").textContent = "需要达到 " + S.cfg.criterion + "% 才能进入正式实验。请再看一遍指导语，然后重练一轮。";
+  $("breakNum").textContent = "—";
+  $("breakMeter").style.display = "none";
+  $("breakHint").textContent = "练习不计入最终数据";
+  const btn = $("continueBtn");
+  btn.disabled = false;
+  btn.textContent = "重练一轮";
+  btn.onclick = () => { $("breakMeter").style.display = ""; startPracticeBlock(S.round + 1); };
+  show("break");
+}
+
+function showBreak({ tag, title, desc, seconds, continueText, onDone }) {
+  clearTimers();
+  $("breakTag").textContent = tag;
+  $("breakTitle").textContent = title;
+  $("breakDesc").textContent = desc;
+  $("breakMeter").style.display = "";
+  const btn = $("continueBtn");
+  const total = Math.max(0, seconds | 0);
+  let left = total;
+
+  $("breakNum").textContent = String(left);
+  $("breakHint").textContent = left > 0 ? "剩余休息时间（秒）" : "可以继续了";
+  $("breakMeter").firstElementChild.style.width = "0%";
+  btn.disabled = total > 0;
+  btn.textContent = total > 0 ? "继续（等待中）" : continueText;
+  btn.onclick = () => { clearTimers(); onDone(); };
+
+  show("break");
+
+  if (total <= 0) { btn.disabled = false; return; }
+
+  const started = performance.now();
+  ticker = setInterval(() => {
+    const elapsed = (performance.now() - started) / 1000;
+    left = Math.max(0, Math.ceil(total - elapsed));
+    $("breakNum").textContent = String(left);
+    $("breakMeter").firstElementChild.style.width =
+      Math.min(100, (elapsed / total) * 100) + "%";
+    if (left <= 0) {
+      clearInterval(ticker); ticker = null;
+      btn.disabled = false;
+      btn.textContent = continueText;
+      $("breakHint").textContent = "可以继续了";
+      if (total <= 10) { later(() => { if (!btn.disabled) btn.onclick(); }, 400); }
+    }
+  }, 200);
+}
+
+/* ---------- 结束实验 ---------- */
+function finishExperiment() {
+  clearTimers();
+  S.locked = true;
+  S.endedAt = new Date().toISOString();
+  persist();
+  renderResults();
+  show("results");
+}
+
+/* ---------- 结果分析 ---------- */
+function analyze() {
+  const main = S.data.filter((d) => d.phase === "main");
+  const valid = main.filter((d) => d.correct === 1 && !d.is_timeout && d.rt_ms >= 200 && d.rt_ms <= 3000);
+  const byAngle = {};
+  for (const a of ANGLES) byAngle[a] = { normal: [], mirror: [], n: 0, ok: 0 };
+
+  for (const d of main) {
+    const cell = byAngle[d.angle];
+    if (!cell) continue;
+    cell.n += 1;
+    if (d.correct === 1) cell.ok += 1;
+    if (d.correct === 1 && !d.is_timeout && d.rt_ms >= 200 && d.rt_ms <= 3000) {
+      cell[d.char_type].push(d.rt_ms);
+    }
+  }
+
+  // 0–180° 线性回归（合并正写 / 反写）
+  const low = valid.filter((d) => d.angle <= 180);
+  let slope = NaN, intercept = NaN, r2 = NaN;
+  if (low.length >= 4) {
+    const xs = low.map((d) => d.angle), ys = low.map((d) => d.rt_ms);
+    const mx = mean(xs), my = mean(ys);
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < xs.length; i++) {
+      sxy += (xs[i] - mx) * (ys[i] - my);
+      sxx += (xs[i] - mx) ** 2;
+      syy += (ys[i] - my) ** 2;
+    }
+    slope = sxy / sxx;
+    intercept = my - slope * mx;
+    r2 = syy > 0 ? (sxy * sxy) / (sxx * syy) : NaN;
+  }
+
+  const meanRT = mean(valid.map((d) => d.rt_ms));
+  const speed = slope > 0 ? 1000 / slope : NaN;
+  const acc = main.length ? (main.filter((d) => d.correct === 1).length / main.length) * 100 : NaN;
+
+  const rtAt = (angle, type) => mean(byAngle[angle][type]);
+  const mirrorCost = mean(
+    ANGLES.map((a) => rtAt(a, "mirror") - rtAt(a, "normal")).filter(Number.isFinite)
+  );
+
+  return { main, valid, byAngle, slope, intercept, r2, meanRT, speed, acc, mirrorCost, rtAt };
+}
+
+function renderResults() {
+  const R = analyze();
+  $("resSubject").textContent = S.subject;
+  $("stValid").textContent = String(R.valid.length);
+  $("stRT").innerHTML = fmt(R.meanRT) + "<em>ms</em>";
+  $("stAcc").innerHTML = fmt(R.acc, 1) + "<em>%</em>";
+  $("stSpeed").innerHTML = fmt(R.speed) + "<em>°/s</em>";
+
+  // 条件表
+  const tbody = $("resTable").querySelector("tbody");
+  tbody.innerHTML = "";
+  for (const a of ANGLES) {
+    const c = R.byAngle[a];
+    const nRT = mean(c.normal), mRT = mean(c.mirror);
+    const row = document.createElement("tr");
+    row.innerHTML =
+      "<td>" + a + "°</td>" +
+      "<td>" + fmt(nRT) + "</td>" +
+      "<td>" + fmt(mRT) + "</td>" +
+      "<td>" + (Number.isFinite(nRT) && Number.isFinite(mRT) ? fmt(mRT - nRT).replace("-", "−") : "—") + "</td>" +
+      "<td>" + (c.n ? fmt((c.ok / c.n) * 100, 1) : "—") + "</td>" +
+      "<td>" + c.n + "</td>";
+    tbody.appendChild(row);
+  }
+
+  // 关键指标
+  const sym = (a, b) => {
+    const va = R.valid.filter((d) => d.angle === a).map((d) => d.rt_ms);
+    const vb = R.valid.filter((d) => d.angle === b).map((d) => d.rt_ms);
+    return [mean(va), mean(vb)];
+  };
+  const [r60, r300] = sym(60, 300);
+  const [r120, r240] = sym(120, 240);
+  const normalAll = R.valid.filter((d) => d.char_type === "normal").map((d) => d.rt_ms);
+  const mirrorAll = R.valid.filter((d) => d.char_type === "mirror").map((d) => d.rt_ms);
+
+  const kt = $("keyTable").querySelector("tbody");
+  kt.innerHTML = "";
+  const krow = (k, v, note) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td style='width:46%'>" + k + "</td><td>" + v + "</td><td style='text-align:left;color:var(--muted);font-size:12px'>" + (note || "") + "</td>";
+    kt.appendChild(tr);
+  };
+  krow("0°–180° 斜率", Number.isFinite(R.slope) ? fmt(R.slope, 2) + " ms/°" : "—", "每增加 1° 平均增加的判断时间");
+  krow("拟合优度 R²", Number.isFinite(R.r2) ? fmt(R.r2, 3) : "—", "越接近 1 越符合线性旋转");
+  krow("旋转速度", Number.isFinite(R.speed) ? fmt(R.speed) + " °/s" : "—", "斜率倒数 ×1000，经典值约 360°/s");
+  krow("镜像成本", Number.isFinite(R.mirrorCost) ? fmt(R.mirrorCost) + " ms" : "—", "反写较正写的平均反应时差");
+  krow("对称性 60° vs 300°", fmt(r60) + " / " + fmt(r300), "差值 " + (Number.isFinite(r60) && Number.isFinite(r300) ? fmt(Math.abs(r60 - r300)) : "—") + " ms");
+  krow("对称性 120° vs 240°", fmt(r120) + " / " + fmt(r240), "差值 " + (Number.isFinite(r120) && Number.isFinite(r240) ? fmt(Math.abs(r120 - r240)) : "—") + " ms");
+  krow("正写 / 反写 平均", fmt(mean(normalAll)) + " / " + fmt(mean(mirrorAll)), "仅正确试次");
+
+  const sdn = sd(normalAll), sdm = sd(mirrorAll);
+  $("keyNotes").innerHTML =
+    "有效试次定义：正式实验、反应正确、RT 在 200–3000 ms 之间。本次共剔除 <b>" +
+    (R.main.length - R.valid.length) + "</b> 个试次。" +
+    "正写 SD = " + fmt(sdn) + " ms，反写 SD = " + fmt(sdm) + " ms。" +
+    "单被试数据不足以做统计检验，若需组水平分析请汇总多人 CSV 后使用 R（<code>lme4</code>）或 Python（<code>statsmodels</code>）。";
+
+  drawChart(R);
+}
+
+function drawChart(R) {
+  const W = 640, H = 300;
+  const pad = { l: 52, r: 18, t: 18, b: 42 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const pts = [];
+  for (const a of ANGLES) {
+    pts.push({ a, v: mean(R.byAngle[a].normal), t: "normal" });
+    pts.push({ a, v: mean(R.byAngle[a].mirror), t: "mirror" });
+  }
+  const vals = pts.map((p) => p.v).filter(Number.isFinite);
+  const yMax = Math.max(400, Math.ceil((Math.max(...vals, 0) + 150) / 200) * 200);
+  const x = (a) => pad.l + (a / 300) * iw;
+  const y = (v) => pad.t + ih - (v / yMax) * ih;
+
+  let s = "";
+  // y 网格
+  const step = yMax > 1600 ? 400 : 200;
+  for (let v = 0; v <= yMax; v += step) {
+    s += `<line x1="${pad.l}" y1="${y(v)}" x2="${W - pad.r}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+    s += `<text x="${pad.l - 10}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}</text>`;
+  }
+  // x 轴刻度
+  for (const a of ANGLES) {
+    s += `<line x1="${x(a)}" y1="${pad.t + ih}" x2="${x(a)}" y2="${pad.t + ih + 5}" stroke="var(--line-strong)" stroke-width="1"/>`;
+    s += `<text x="${x(a)}" y="${pad.t + ih + 20}" text-anchor="middle" font-size="11" fill="var(--muted)">${a}°</text>`;
+  }
+  // 轴标签
+  s += `<text x="${pad.l + iw / 2}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--muted)">旋转角度</text>`;
+  s += `<text x="14" y="${pad.t + ih / 2}" text-anchor="middle" font-size="11" fill="var(--muted)" transform="rotate(-90 14 ${pad.t + ih / 2})">反应时 (ms)</text>`;
+
+  // 线性拟合虚线（0–180）
+  if (Number.isFinite(R.slope)) {
+    const x1 = 0, x2 = 180;
+    s += `<line x1="${x(x1)}" y1="${y(R.intercept + R.slope * x1)}" x2="${x(x2)}" y2="${y(R.intercept + R.slope * x2)}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" opacity=".7"/>`;
+  }
+
+  const series = [
+    { key: "normal", color: "#2f5bea", label: "正写 R" },
+    { key: "mirror", color: "#c2410c", label: "反写 Я" }
+  ];
+  for (const se of series) {
+    const line = ANGLES
+      .map((a) => ({ a, v: mean(R.byAngle[a][se.key]) }))
+      .filter((p) => Number.isFinite(p.v));
+    if (!line.length) continue;
+    const d = line.map((p, i) => (i ? "L" : "M") + x(p.a).toFixed(1) + " " + y(p.v).toFixed(1)).join(" ");
+    s += `<path d="${d}" fill="none" stroke="${se.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    for (const p of line) {
+      s += `<circle cx="${x(p.a)}" cy="${y(p.v)}" r="4" fill="var(--panel)" stroke="${se.color}" stroke-width="2.2"/>`;
+    }
+  }
+
+  // 图例
+  let lx = W - pad.r - 128;
+  const ly = pad.t + 6;
+  series.forEach((se) => {
+    s += `<circle cx="${lx}" cy="${ly + 3}" r="4" fill="${se.color}"/>`;
+    s += `<text x="${lx + 10}" y="${ly + 7}" font-size="11.5" fill="var(--ink-2)">${se.label}</text>`;
+    lx += 64;
+  });
+
+  $("chart").innerHTML = s;
+}
+
+/* ---------- 导出 ---------- */
+function csvCell(v) {
+  const s = v === null || v === undefined ? "" : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function buildCsv() {
+  const cols = ["subject_id", "session_id", "phase", "practice_round", "block", "trial_in_block",
+    "global_index", "angle", "char_type", "expected_key", "response_key", "rt_ms", "correct",
+    "is_timeout", "is_outlier", "stim_px", "timestamp"];
+  const lines = [cols.join(",")];
+  for (const d of S.data) lines.push(cols.map((c) => csvCell(d[c])).join(","));
+  return "\ufeff" + lines.join("\n");
+}
+function download(filename, text, mime) {
+  const blob = new Blob([text], { type: mime + ";charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+function stamp() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes());
+}
+
+/* ---------- 键盘 / 触控 ---------- */
+function onKey(e) {
+  if (e.repeat || e.altKey || e.ctrlKey || e.metaKey) return;
+  const k = e.key.toLowerCase();
+  if (k !== "f" && k !== "j") return;
+  if (!S || !$("screen-run").classList.contains("active")) return;
+  e.preventDefault();
+  respond(k, false);
+}
+
+/* ---------- 初始化 ---------- */
+function init() {
+  initTheme();
+
+  const params = parseParams();
+  if (params.subject) $("subjectId").value = params.subject;
+  if (params.perCond) $("cfgPer").value = params.perCond;
+  if (params.blocks) $("cfgBlocks").value = params.blocks;
+  if (params.practicePerCond) $("cfgPractice").value = params.practicePerCond;
+  if (params.stim) $("cfgStim").value = params.stim;
+  if (params.fixation) $("cfgFix").value = params.fixation;
+  if (params.timeout) $("cfgTimeout").value = params.timeout;
+  if (params.breakSec !== null && params.breakSec !== undefined) $("cfgBreak").value = params.breakSec;
+
+  syncWelcomeFacts();
+  ["cfgPer", "cfgBlocks", "cfgPractice", "cfgStim", "cfgFix", "cfgTimeout", "cfgBreak", "cfgFeedback"]
+    .forEach((id) => $(id).addEventListener("input", syncWelcomeFacts));
+
+  // 已有未完成会话
+  const saved = loadSaved();
+  if (saved) {
+    const doneMain = saved.data.filter((d) => d.phase === "main").length;
+    $("resumeBanner").hidden = false;
+    $("resumeBanner").innerHTML =
+      "<div>检测到未完成的实验：<b>" + saved.subject + "</b> · " +
+      (saved.phase === "practice" ? "练习阶段" : "正式第 " + saved.block + " 组") +
+      " · 已记录 <b>" + saved.data.length + "</b> 个试次（其中正式 " + doneMain + "）。</div>";
+    $("resumeBtn").hidden = false;
+    $("resumeBtn").onclick = () => resumeSession(saved);
+  }
+
+  $("toInstructions").onclick = () => {
+    const id = $("subjectId").value.trim();
+    if (!id) { $("subjectId").focus(); return; }
+    S = newSession(readConfig(), id);
+    $("subjectChip").hidden = false;
+    $("subjectChipVal").textContent = id;
+    syncWelcomeFacts();
+    show("instructions");
+  };
+
+  $("backHome").onclick = () => show("welcome");
+
+  $("startPractice").onclick = () => {
+    if (!S) S = newSession(readConfig(), $("subjectId").value.trim() || "S001");
+    if ($("screen-instructions").classList.contains("active")) syncWelcomeFacts();
+    startPracticeBlock(1);
+  };
+
+  $("restart").onclick = () => {
+    clearSaved();
+    S = null;
+    $("subjectChip").hidden = true;
+    $("resumeBtn").hidden = true;
+    $("resumeBanner").hidden = true;
+    show("welcome");
+  };
+
+  $("dlCsv").onclick = () => download(
+    "mental_rotation_" + S.subject + "_" + stamp() + ".csv", buildCsv(), "text/csv");
+
+  $("dlJson").onclick = () => download(
+    "mental_rotation_" + S.subject + "_" + stamp() + ".json",
+    JSON.stringify({ meta: { ...S.cfg, subject: S.subject, sessionId: S.sessionId, startedAt: S.startedAt, endedAt: S.endedAt }, trials: S.data }, null, 2),
+    "application/json");
+
+  $("copySum").onclick = async () => {
+    const R = analyze();
+    const txt = [
+      "心理旋转实验 · 被试 " + S.subject,
+      "会话 " + S.sessionId + "（" + S.startedAt.slice(0, 16).replace("T", " ") + "）",
+      "有效试次 " + R.valid.length + "，平均 RT " + fmt(R.meanRT) + " ms，正确率 " + fmt(R.acc, 1) + "%",
+      "0–180° 斜率 " + fmt(R.slope, 2) + " ms/°，R² = " + fmt(R.r2, 3) + "，旋转速度 " + fmt(R.speed) + " °/s",
+      "镜像成本 " + fmt(R.mirrorCost) + " ms"
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(txt);
+      $("copySum").textContent = "已复制 ✓";
+      setTimeout(() => ($("copySum").textContent = "复制结果摘要"), 1600);
+    } catch (e) {
+      download("summary_" + S.subject + ".txt", txt, "text/plain");
+    }
+  };
+
+  document.addEventListener("keydown", onKey);
+  document.querySelectorAll("[data-resp]").forEach((b) => {
+    b.addEventListener("click", () => {
+      if (!S || !$("screen-run").classList.contains("active")) return;
+      respond(b.dataset.resp, false);
+    });
+  });
+
+  // 触屏设备显示虚拟按键
+  if (matchMedia("(pointer: coarse)").matches) document.body.classList.add("touch");
+
+  // 全屏
+  $("fsBtn").onclick = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      document.exitFullscreen?.();
+    }
+  };
+
+  // 主题循环
+  $("themeBtn").onclick = () => {
+    let cur = "auto";
+    try { cur = localStorage.getItem(THEME_KEY) || "auto"; } catch (e) {}
+    applyTheme(cur === "auto" ? "light" : cur === "light" ? "dark" : "auto");
+  };
+
+  // 离开保护（仅实验进行中）
+  window.addEventListener("beforeunload", (e) => {
+    if (S && !S.endedAt && S.data.length > 0) {
+      e.preventDefault();
+      e.returnValue = "实验尚未完成，数据已本地保存，确定离开吗？";
+      return e.returnValue;
+    }
+  });
+}
+
+function resumeSession(saved) {
+  S = {
+    ...newSession(saved.cfg, saved.subject),
+    sessionId: saved.sessionId,
+    phase: saved.phase,
+    round: saved.round,
+    block: saved.block,
+    index: saved.index,
+    trials: saved.trials,
+    data: saved.data,
+    startedAt: saved.startedAt
+  };
+  // 兼容旧配置缺省值
+  S.cfg = { ...DEFAULTS, ...saved.cfg };
+  $("subjectChip").hidden = false;
+  $("subjectChipVal").textContent = S.subject;
+  show("run");
+  $("runNote").textContent = S.phase === "practice" ? "练习阶段（续）" : "正式实验（续）";
+  persist();
+  runTrial();
+}
+
+init();
+</script>
+</body>
+</html>
