@@ -54,6 +54,7 @@
   }
 
   *,*::before,*::after{box-sizing:border-box;}
+  [hidden]{display:none !important;}
   html,body{height:100%;}
   body{
     margin:0;
@@ -164,7 +165,7 @@
 
   details.adv{
     border:1px solid var(--line); border-radius:13px;
-    background:var(--panel-2); padding:0; margin:4px 0 22px;
+    background:var(--panel-2); padding:0; margin:22px 0 26px;
   }
   details.adv > summary{
     cursor:pointer; padding:12px 14px; font-size:13px; font-weight:620;
@@ -172,7 +173,7 @@
   }
   details.adv > summary::-webkit-details-marker{display:none;}
   details.adv > summary::before{
-    content:"›"; display:inline-block; transition:transform .2s; font-size:16px; color:var(--muted);
+    content:"›"; display:inline-block; transition:transform .2s; font-size:19px; line-height:1; color:var(--muted); transform-origin:40% 50%;
   }
   details.adv[open] > summary::before{transform:rotate(90deg);}
   details.adv .adv-body{padding:2px 14px 16px; border-top:1px solid var(--line); padding-top:16px;}
@@ -312,7 +313,7 @@
   .tbl-wrap th:last-child, .tbl-wrap td:last-child{padding-right:14px;}
 
   .chart{width:100%; height:auto; display:block;}
-  .notes{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.7;}
+  .notes{font-size:12.5px; color:var(--muted); margin-top:12px; line-height:1.85;}
   .notes code{font-size:12px; background:var(--panel-2); padding:1px 5px; border-radius:5px;}
 
   .banner{
@@ -326,7 +327,7 @@
   .banner b{color:var(--ink);}
 
   .foot{
-    text-align:center; font-size:11.5px; color:var(--muted);
+    text-align:center; font-size:12px; color:var(--ink-2); opacity:.78;
     padding:28px 16px 40px; line-height:1.9;
   }
   .foot a{color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--line-strong);}
@@ -543,7 +544,7 @@
       </div>
 
       <div class="sect">
-        <div class="sect-h"><h2>反应时 × 旋转角度</h2><p>虚线为 0°–180° 线性拟合</p></div>
+        <div class="sect-h"><h2>反应时 × 旋转角度</h2><p>横轴 0°–300°，虚线为 0°–180° 线性拟合（旋转速度估计）</p></div>
         <svg class="chart" id="chart" viewBox="0 0 640 300" role="img" aria-label="反应时随旋转角度变化的折线图"></svg>
       </div>
 
@@ -1164,7 +1165,7 @@ function drawChart(R) {
     s += `<text x="${x(a)}" y="${pad.t + ih + 20}" text-anchor="middle" font-size="11" fill="var(--muted)">${a}°</text>`;
   }
   // 轴标签
-  s += `<text x="${pad.l + iw / 2}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--muted)">旋转角度</text>`;
+  s += `<text x="${pad.l + iw / 2}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--muted)">旋转角度</text>`;
   s += `<text x="14" y="${pad.t + ih / 2}" text-anchor="middle" font-size="11" fill="var(--muted)" transform="rotate(-90 14 ${pad.t + ih / 2})">反应时 (ms)</text>`;
 
   // 线性拟合虚线（0–180）
@@ -1175,7 +1176,7 @@ function drawChart(R) {
 
   const series = [
     { key: "normal", color: "#2f5bea", label: "正写 R" },
-    { key: "mirror", color: "#c2410c", label: "反写 Я" }
+    { key: "mirror", color: "#c2410c", label: "镜像 R" }
   ];
   for (const se of series) {
     const line = ANGLES
